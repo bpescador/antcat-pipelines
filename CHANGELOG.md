@@ -1,5 +1,15 @@
 # antcat-tw-sync — changelog
 
+## 2026-08-15 -- TW payload reconciled; workflow unified
+- WORKFLOW.md: merged the TaxonWorks project's ANTCAT_TW_WORKFLOW.md into the
+  single process doc (standing rules, TW-side Stages 4-6, unified gotchas).
+- Added antcat_dwca_checklist_import.md (751-line TW import runbook).
+- Rejected from the payload as OLDER than main: export_references.rb (stale
+  _v2 header), export_antcat_bibtex.py (missing square-bracket balancing).
+  push_to_repo.sh discarded (blind overwrite; normal git flow instead).
+- Verified identical to main: export_antcat_names.py, protonym.py,
+  build_origin_citation_links.py, build_tw_exports.sh.
+
 ## 2026-08-14 — repo consolidated (AntCat project session)
 - All pipeline code gathered into this repo from three scattered sources
   (references3_final folder, taxonworks_sync bundle, project knowledge).
