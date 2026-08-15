@@ -23,9 +23,32 @@ docker exec -w /app -e RAILS_ENV=production antcat-app \
 scp antcat:/var/www/antcat-2/antcat_references.csv ~/antcat/taxonworks_sync/
 ```
 
-The worldants dump comes from the daily 05:04 auto-export. **Same-moment
-rule:** the dump must be from the same day as (or earlier than) the CSV —
-never newer, or names will cite references the .bib lacks.
+### Where the worldants dump comes from
+
+It is **not** produced on antcat-prod, and not by the 05:04 job. It is
+generated nightly ~03:00 PT on a separate bridge box,
+`antcat-export.antweb.org`, by `/root/antcat/docker/export_database.sh`: that
+script pulls a fresh mysqldump from antcat-prod over the private network,
+loads it into a throwaway dockerized AntCat, and runs `rake antweb:export`,
+writing `/root/antcat/database_export/antcat.antweb.txt` (~140 MB). AntWeb
+fetches that file at 05:04 PT and renames it
+`YYYYMMDD-HH_MM_SS-worldants.txt` — same file, AntWeb's name. Either name is
+the same content.
+
+```bash
+# WHERE: Mac Terminal
+scp antcat-export:/root/antcat/database_export/antcat.antweb.txt worldants.txt
+```
+
+The `antcat-export` alias is in Brian's `~/.ssh/config`; port 9090 on that box
+is firewalled externally. No IP addresses belong in this file.
+
+**Same-moment rule:** the dump must be from the same day as (or earlier than)
+the CSV — never newer, or names will cite references the .bib lacks. Because
+the dump reflects prod as of ~03:00 PT, a reference CSV exported later the
+same day always satisfies the rule. The trap is the reverse: a CSV left over
+from a previous cycle is *older* than today's dump and must not be reused —
+re-run the Stage 1 export instead.
 
 ## Stage 2 — names + BibTeX (Mac, droplet host, or a Claude session)
 
