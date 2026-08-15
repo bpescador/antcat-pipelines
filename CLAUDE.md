@@ -34,8 +34,14 @@ is the rules of engagement.
 5. **No secrets anywhere** — not in commits, not echoed to the transcript.
    Tokens come from env vars. This repo is public.
 6. **Commit style**: small, verified, one concern per commit; message says
-   what and why. Push after each verified unit of work.
-7. **When Brian gives an instruction that conflicts with a runbook, say so
+   what and why. Push after each verified unit of work. **Before any commit,
+   `bash smoke.sh` from the repo root must print SMOKE PASS** — it catches
+   truncated files and regressions of the hard-won fixes.
+7. **Detached-script provenance**: whenever a script is copied to a server
+   (docker cp, curl from raw, scp), record in the session log the commit it
+   came from (`git rev-parse --short HEAD`) and the file's md5 — a script
+   running off-repo must always be traceable to the exact version.
+8. **When Brian gives an instruction that conflicts with a runbook, say so
    before acting** — the runbooks encode hard-won failures (DOI page leak,
    append-ordering bug, wrong-terminal executions). Don't silently override
    them, and don't silently obey either.
