@@ -1,0 +1,8 @@
+# data never goes in git -- dumps, exports, outputs
+*worldants*.txt
+antcat_references.csv
+*.tsv
+*.bib
+tw_out/
+*.zip
+.DS_Store
