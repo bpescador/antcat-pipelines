@@ -1,4 +1,19 @@
-# antcat-tw-sync — changelog
+# antcat-pipelines — changelog
+
+## 2026-08-15 -- repo broadened: antcat-tw-sync -> antcat-pipelines
+- Renamed; now the single home for both AntCat pipelines. TW-sync files stay
+  at repo root (paths, curl lines, and checklists unchanged); the Bolton NGC
+  annual-diff toolkit added under bolton/.
+- bolton/ contents (from AntCat project knowledge + round_9 bundle):
+  parse_bolton.py, diff_history.py, diff_catalogue.py,
+  diff_history_citation-key.patch (provenance; may be pre-applied),
+  citation_match.py, type_recon.rb, export_protonyms.rb, RUNBOOK.md,
+  BOLTON_SYNC_RUNBOOK.md (= v2 FINAL, supersedes v1), CHANGELOG_ENTRY.md.
+- README rewritten as the index of both pipelines; WORKFLOW.md URLs updated
+  for the rename.
+- Droplet ops docs deliberately excluded: public repo, and they carry the
+  origin IP that Cloudflare exists to hide. They remain in AntCat project
+  knowledge.
 
 ## 2026-08-15 -- TW payload reconciled; workflow unified
 - WORKFLOW.md: merged the TaxonWorks project's ANTCAT_TW_WORKFLOW.md into the

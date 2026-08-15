@@ -1,0 +1,99 @@
+--- /mnt/user-data/uploads/diff_history.py	2026-07-16 15:02:52.666723000 +0000
++++ diff_history.py	2026-07-16 15:20:39.149400674 +0000
+@@ -62,9 +62,9 @@
+ # in Boudinot ... 2024 combinations, and 600+ others of this form).
+ IN_CITE = re.compile(r'\b[A-Z][A-Za-z\u00C0-\u024F\'\-]+,\s+in\s+([A-Z][A-Za-z\u00C0-\u024F\'\-]+)')
+ # "Boudinot, Bock, et al. 2024" / "Boudinot, Bock & Jouault, 2024" -- Bolton spells the
+-# co-authors; AntCat writes "Boudinot et al." So collapse a run of "Surname, Surname,
+-# [Surname,] et al." to just the first author, matching AntCat's rendering. Requires an
+-# "et al." (3+ authors) so ordinary two-author "A & B" citations are left intact.
++# co-authors; AntCat writes "Boudinot et al." Keying on the FIRST author (see
++# _first_author) makes the two agree however many co-authors each prints, so this collapse
++# is now only a belt-and-suspenders normalisation of the common "..., et al." form.
+ ETAL_LIST = re.compile(
+     r'\b([A-Z][A-Za-z\u00C0-\u024F\'\-]+)'
+     r'(?:,\s+[A-Z][A-Za-z\u00C0-\u024F\'\-]+\.?){1,4}'   # one or more co-authors
+@@ -77,13 +77,65 @@
+     text = ETAL_LIST.sub(r'\1 et al.', text)
+     return text
+ 
++# Compound surnames key on their head consistently across both catalogues:
++# "Dalla Torre" -> torre, "de Andrade" -> andrade. Only a particle SPACE-JOINED to a
++# following capitalised surname counts as a compound prefix, so a comma-separated first
++# author that merely spells a particle ("Du, Xu & Chen" -- the Chinese surname Du) is left
++# intact. The particle alternation is case-folded with an inline (?i:...) so the surname
++# class stays case-sensitive (otherwise it would swallow lower-case "et").
++_PARTICLES = r'de|del|della|dalla|van|von|da|do|dos|du|le|la|den|der|di|ten|ter|af|zu|das|dem'
++_COMPOUND = re.compile(
++    r'\b(?:(?i:%s)\s+)+([A-Z][a-z\u00C0-\u00FF\u0100-\u017F][\w\u00C0-\u024F\'’-]*)' % _PARTICLES)
++# author-run continuation tokens: initials (W. / W.Y. / C.G.), '&', 'et', 'al.'
++_CONT = re.compile(r"^(?:[A-Z]\.?(?:[- ]?[A-Z]\.?)*|&|et|al\.?|and)$")
++
++def _first_author(pre):
++    """First author of the citation whose year sits immediately after `pre`.
++
++    Walk LEFT from the year over the contiguous author run -- surnames, initials,
++    '&'/'et al.' -- and stop at the first non-author token (a lower-case epithet, a page
++    number, or a clause boundary). The FIRST surname of that run is the citation's first
++    author, which is exactly what AntCat renders as "First et al." So both catalogues key
++    on the same author however many co-authors each spells out. This replaces the old
++    nearest(=last)-surname key, which landed on whichever co-author Bolton happened to
++    print last ("Wang, W.Y., Soh, et al." -> soh) and so never matched AntCat's "wang".
++
++    Two guards keep the walk honest:
++      * split on ';' and on ':' (unless the ':' is trailing -- a stray "Author: year"), so
++        the run never crosses a citation boundary or a "combination in Genus:" target;
++      * stopping at the lower-case epithet keeps a protonym line ("Camponotus enganensis
++        Santschi, 1928") off the genus -- the failure that got first-author-of-SEGMENT
++        reverted before. Here the stop happens without a segment split, so the walk never
++        reaches back to the genus in the first place."""
++    pre = _COMPOUND.sub(r'\1', pre)
++    raw = re.split(r';|:(?!\s*$)', pre)[-1]
++    run = []
++    for tok in reversed(re.findall(r"[^\s,]+", raw)):
++        c = tok.strip(".,;:()[]\"")
++        if not c:
++            continue
++        if SURTOK.fullmatch(c) or _CONT.match(c):
++            run.append(c)
++        else:
++            break                                 # lower-case epithet / page number / boundary
++    run.reverse()
++    surs = [t for t in run if SURTOK.fullmatch(t)]
++    return surs[0] if surs else None
++
+ def citations(text):
+-    """citekey -> (surname, 'year+letter'); anchored on the year, taking the nearest
+-    surname before it. First canonicalises Bolton's "X, in Y" describer/publication
+-    form to the publication author Y, so a name published inside another work keys the
+-    same on both sides. Nearest-surname (not first-author-of-segment) because AntCat's
+-    history prose is not ';'-delimited -- one long run whose first surname is the
+-    genus, not the citation's author."""
++    """citekey -> (surname, 'year+letter'); anchored on the year, keyed on the FIRST author
++    of each citation (see _first_author). Canonicalises Bolton's "X, in Y" form to the
++    publication author Y first, so a name published inside another work keys the same on
++    both sides.
++
++    NOTE (2026 revision): switched from nearest-surname to first-author keying. Bradley's
++    "already in AntCat" review of history_added_refs showed the nearest-surname key landed
++    on the LAST co-author Bolton prints ("Wang, W.Y., Soh, et al." -> soh) while AntCat
++    collapses the same reference to its first author ("Wang et al." -> wang), so ~85% of
++    the 'existing' rows were phantom. First-author keying makes the two agree. Cost: two
++    papers with the same first author AND year can't be told apart (the a/b letter is
++    dropped for the same reason) -- but that can only ever HIDE a genuine gap, never invent
++    one, which is the safe direction for a review worklist."""
+     text = _canon_in(text)
+     out = {}
+     for m in YEARTOK.finditer(text):
+@@ -92,10 +144,7 @@
+         yr, lt = m.group(1), m.group(2)
+         if int(yr) > 2026:
+             continue                              # page number / specimen code
+-        pre = text[max(0, m.start() - 45):m.start()]
+-        sur = None
+-        for sm in SURTOK.finditer(pre):
+-            sur = sm.group(0)
++        sur = _first_author(text[max(0, m.start() - 60):m.start()])
+         if not sur:
+             continue
+         out[f"{authorkey(sur)}|{yr}{lt}"] = (sur, yr + lt)
