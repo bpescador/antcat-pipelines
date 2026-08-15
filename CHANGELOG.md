@@ -1,5 +1,13 @@
 # antcat-pipelines — changelog
 
+## 2026-08-15c -- pre-commit smoke test and provenance rule
+- smoke.sh added (syntax-checks every .py/.sh/.rb; tripwires for the PAGE_RE
+  fix, the canonical diff_history branch, and BibTeX bracket balancing).
+  CLAUDE.md now requires SMOKE PASS before any commit, and commit-hash + md5
+  logging for any script copied to a server. Adapted from the genomics
+  dashboard project's BUILD_TAG lesson: git is the version marker here;
+  detachment is where identity gets logged.
+
 ## 2026-08-15b -- bolton/ completed and repaired from the round-9 master bundle
 - diff_history.py REPLACED: the committed 307-line copy was the wrong branch
   (pre-fuzzy, pre-citation-fix; would produce ~1,418 phantom rows). Canonical =
