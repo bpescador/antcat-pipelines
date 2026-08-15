@@ -6,3 +6,4 @@ antcat_references.csv
 tw_out/
 *.zip
 .DS_Store
+__pycache__/
