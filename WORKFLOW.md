@@ -52,6 +52,12 @@ re-run the Stage 1 export instead.
 
 ## Stage 2 — names + BibTeX (Mac, droplet host, or a Claude session)
 
+**Prerequisite:** the strict-parse gate imports `bibtexparser` and uses its v1
+API (`bibtexparser.loads`), so install v1 — `pip install 'bibtexparser<2'`
+(v2 is a beta with a different API and will not work). Fresh machines and
+agent sandboxes generally do not have it; a `ModuleNotFoundError` here is a
+missing prerequisite, not a pipeline failure.
+
 ```bash
 # WHERE: any machine with python3 and this repo
 ./build_tw_exports.sh <worldants.txt> <antcat_references.csv> tw_out
