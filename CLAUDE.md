@@ -48,6 +48,15 @@ and what the next session should pick up. If the session touched process
 knowledge, update WORKFLOW.md or the relevant runbook in the same session and
 commit it — future sessions only know what's written down.
 
+## Sandbox quirks
+
+Agent sandboxes run with `PYTHONSAFEPATH=1`, which strips the current
+directory from `sys.path` — repo-root imports (`import protonym`) fail there
+unless you run `PYTHONPATH=. python3 ...`. Also, the agent's `python3` is its
+own sandbox environment, not Brian's miniconda: an import that works (or
+fails) for the agent says the module is sound, not that Brian's interpreter is
+configured the same way.
+
 ## Context
 
 Deeper background (infrastructure details, open items, decision history)
