@@ -185,33 +185,57 @@ def run(antcat_dir, bolton_dir, out_dir, antcat_refs=None):
                     return r[n]
             return ''
 
-        # Reference key = normalised author string + BARE 4-digit year. The
-        # disambiguation letter (1990a/b) is deliberately dropped: AntCat and
-        # Bolton assign letters independently and AntCat's Bolton-letter field is
-        # only sparsely filled, so the letter can't be matched across the two.
-        # Accents are folded (Brandao == Brandão) and Bolton's parenthetical
-        # forenames ("Andre, E. (Ernest)") are stripped before keying.
-        def refkey(author, year):
+        # Match on FIRST-AUTHOR SURNAME + BARE YEAR, with the first initial used
+        # only as a tiebreaker. Rationale:
+        #  - First author only: keying on the whole multi-author string is too
+        #    brittle -- any co-author / initial / ordering difference between the
+        #    two catalogues breaks an otherwise-clear match (full-string keying
+        #    left 356 of 417 "missing" refs as false positives: Xu, Radchenko ...).
+        #  - Initial as tiebreaker, not part of the key: the two catalogues render
+        #    initials differently (Alayo D.P./P., Dalla Torre C.G./K.W., Dash
+        #    T.S./S.T. swapped, Mei /M.), which would re-introduce ~19 false
+        #    "missing". So a Bolton ref counts as present if AntCat has ANY ref
+        #    with that surname+year -- UNLESS AntCat lists several distinct first
+        #    initials for that surname+year (genuinely different authors, <1% of
+        #    keys), in which case the initial must match. "(forename)" stripped,
+        #    accents folded.
+        #  - Bare year, no a/b/c letter (the letters don't agree across the two).
+        # Cost: two papers with the same first author AND year can't be told
+        # apart, so if AntCat holds fewer than Bolton the extra won't flag.
+        def sur_ini_year(author, year):
             a = unicodedata.normalize('NFKD', author or '')
             a = ''.join(c for c in a if not unicodedata.combining(c))
             a = re.sub(r'\([^)]*\)', ' ', a)
-            ak = re.sub(r'[^a-z]', '', a.lower())
+            parts = a.split(',', 1)
+            sur = re.sub(r'[^a-z]', '', parts[0].lower())
+            ini = ''
+            if len(parts) > 1:
+                m = re.search(r'[A-Za-z]', parts[1])
+                ini = m.group(0).lower() if m else ''
             ym = re.search(r'(1[6789]\d\d|20\d\d)', year or '')
-            return f'{ak}|{ym.group(1)}' if (ak and ym) else None
+            return (sur, ini, ym.group(1)) if (sur and ym) else (None, None, None)
 
-        ac_keys = set()
+        from collections import defaultdict as _dd
+        ac_sy = _dd(set)                 # (surname, year) -> {first initials seen}
         for r in ac_rf:
-            k = refkey(field(r, 'author_names_string', 'authors', 'author'),
-                       field(r, 'citation_year', 'year'))
-            if k:
-                ac_keys.add(k)
+            sur, ini, yr = sur_ini_year(field(r, 'author_names_string', 'authors', 'author'),
+                                        field(r, 'citation_year', 'year'))
+            if sur:
+                ac_sy[(sur, yr)].add(ini)
         ref_add = []
         for r in bo_rf:
-            k = refkey(r.get('author', ''), r.get('year', ''))
-            if k and k not in ac_keys:
-                ref_add.append(r)
+            sur, ini, yr = sur_ini_year(r.get('author', ''), r.get('year', ''))
+            if not sur:
+                continue                 # malformed / no parseable year
+            inits = ac_sy.get((sur, yr))
+            if inits is None:
+                ref_add.append(r)                                    # nothing by surname+year
+            elif len(inits) > 1 and ini and '' not in inits and ini not in inits:
+                rr = dict(r)
+                rr['note'] = 'AntCat has this surname+year under a different author initial'
+                ref_add.append(rr)                                   # ambiguous -> flag to check
         write_csv(os.path.join(out_dir, 'references_in_bolton_not_antcat.csv'), ref_add,
-                  ['author', 'year', 'reference_text', 'source_file'])
+                  ['author', 'year', 'reference_text', 'note', 'source_file'])
         summary.append(f"  AntCat reference entries:         {len(ac_rf):>6}")
         summary.append(f"  In Bolton, NOT matched in AntCat: {len(ref_add):>6}   -> references_in_bolton_not_antcat.csv")
     else:

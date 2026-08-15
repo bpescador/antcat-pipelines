@@ -56,7 +56,19 @@ def _looks_like_title(author):
     return best >= 2
 
 def first_run(p):
-    return next((r for r in p.runs if r.text.strip()), None)
+    """The run that carries the paragraph's emphasis signal.
+
+    Fossil headwords are prefixed with an asterisk, and Bolton often puts that
+    asterisk in a run of its OWN, with no formatting:
+
+        runs: ['*'] ['perseus'](italic) ['. *Dissimulodorylus ...'](italic)
+
+    Taking the first non-empty run then yields the unformatted '*', the
+    bold/italic test fails, the headword is never recognised as a block
+    boundary, and its whole entry leaks into the PRECEDING name. So skip runs
+    that carry no letter."""
+    return (next((r for r in p.runs if re.search(r'[A-Za-z]', r.text)), None)
+            or next((r for r in p.runs if r.text.strip()), None))
 
 def leading_italic(p):
     s = ''
@@ -84,16 +96,24 @@ def parse_species_file(path):
         fr = first_run(p)
         if not fr:
             continue
-        # section genus header: a single ALL-CAPS token, bold+italic
-        if re.fullmatch(r'\*?[A-Z][A-Z\-]+', t) and fr.bold and fr.italic:
+        # section genus header: a single ALL-CAPS token (Bolton emphasises it
+        # bold+italic, but the bold is applied inconsistently, so accept either).
+        if re.fullmatch(r'\*?[A-Z][A-Z\-]+', t) and (fr.bold or fr.italic):
             cur_genus = t.replace('*', '').strip().title()
             continue
         ft = fr.text.strip()
-        if fr.bold and fr.italic and re.match(r'^\*?[a-z]', ft):
-            # headword epithet comes from the TEXT (runs sometimes split the word),
-            # the bold+italic first run is only the signal that this is a headword.
+        # A species headword's first run is emphasised and starts with the lowercase
+        # epithet. Bolton's headwords are NOT reliably bold -- some are italic-only
+        # (e.g. Cardiocondyla insutura) -- so require italic-OR-bold, not both, or the
+        # headword is missed and its whole block leaks into the preceding name.
+        if (fr.bold or fr.italic) and re.match(r'^\*?[a-z]', ft):
+            # headword epithet comes from the TEXT (runs sometimes split the word);
+            # the emphasised first run is only the signal that this is a headword.
             hm = re.match(r'^\*?([a-z][a-z\-]+)\.', t)
-            if not hm:
+            # a real headword reads "epithet. Genus ..." -- the token after the
+            # epithet's period is a capitalised genus. This guard keeps the relaxed
+            # emphasis test from catching an emphasised non-headword line.
+            if not hm or not re.match(r'\s*\*?[A-Z]', t[hm.end():]):
                 if cur_lines is not None:          # not a real headword -> continuation
                     cur_lines.append(t)
                 continue

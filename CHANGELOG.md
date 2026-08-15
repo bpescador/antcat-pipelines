@@ -1,5 +1,35 @@
 # antcat-pipelines — changelog
 
+## 2026-08-15b -- bolton/ completed and repaired from the round-9 master bundle
+- diff_history.py REPLACED: the committed 307-line copy was the wrong branch
+  (pre-fuzzy, pre-citation-fix; would produce ~1,418 phantom rows). Canonical =
+  the 761-line round-7/round-9 version (byte-identical across three archive
+  copies), which supersedes BOTH the Round-3 same_epi fuzzy matchers and the
+  citation-key patch via gstem-indexed act matching. diff_history_citation-key
+  .patch removed as a superseded artifact of the wrong-branch merge attempt.
+- ADDED from the master bundle (all syntax-checked): parse_antcat.py (required
+  import of diff_history/diff_catalogue), diff_status_refs.py,
+  resolve_status_refs.py, export_references_ws1.rb (the WS1 reference-table
+  dump; distinct from the validated root TW exporter), and
+  ANTCAT_COMPARISON_MASTER.md (the three-workstream architecture doc).
+- UPDATED from the master bundle (newer than the project-knowledge copies):
+  parse_bolton.py (252->272 ln), diff_catalogue.py (235->259 ln).
+- RECOVERED from chat history verbatim: institutions_export.rb (7 lines,
+  confirmed against its logged production run: 784 rows).
+- KEPT repo versions over master (repo newer): protonym.py (docstring-only
+  churn; this copy reproduced the validated 23,100-name build),
+  export_antcat_names.py (master predates the PAGE_RE fix), root
+  export_references.rb (master's copy = same minus the header fix).
+- Invocation note: bolton scripts import protonym (repo root) and parse_antcat
+  (bolton/) -- run from repo root with PYTHONPATH=.:bolton
+- STILL CHAT-ONLY, pinned for a dedicated retrieval session:
+  (1) the July production writer suite (dry-run/canary/batch/manual) --
+      chat "Batch writing 563 taxonomic status citations to AntCat",
+      claude.ai/chat/d8b284fa-f57a-4a7a-99fb-139512cf5eed;
+  (2) history_order_export.rb (its findings are fully preserved in
+      BOLTON_SYNC_RUNBOOK.md section 2A) -- chat "Mapping NGC type material
+      to AntCat fields", claude.ai/chat/a0e22ff4-3ba1-442b-9460-9fd0ea0de8f9.
+
 ## 2026-08-15 -- repo broadened: antcat-tw-sync -> antcat-pipelines
 - Renamed; now the single home for both AntCat pipelines. TW-sync files stay
   at repo root (paths, curl lines, and checklists unchanged); the Bolton NGC
