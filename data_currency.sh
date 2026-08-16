@@ -14,9 +14,14 @@ for f in $(find . -maxdepth 2 -type f \( -name "*.txt" -o -name "*.csv" -o -name
   m=$(mt "$f"); age=$(( (now - m) / 3600 )); h=$(h5 "$f")
   printf "%-45s %6sh  %s\n" "$f" "$age" "$h"
 done
-dump=$(ls -t antcat.antweb*.txt *worldants*.txt 2>/dev/null | head -1)
-csv=$(ls -t antcat_references*.csv 2>/dev/null | head -1)
+newest() { find . -maxdepth 2 -type f \( "$@" \) -exec bash -c 'echo "$(mt "$1") $1"' _ {} \; 2>/dev/null | sort -rn | head -1 | cut -d" " -f2-; }
+export -f mt 2>/dev/null
+dump=$(newest -name "antcat.antweb*.txt" -o -name "*worldants*.txt")
+csv=$(newest -name "antcat_references*.csv")
 echo; [ -n "$dump" ] && [ -n "$csv" ] || { echo "PAIR: cannot check -- need one dump and one reference CSV in $D"; exit 0; }
 dm=$(mt "$dump"); cm=$(mt "$csv")
 if [ "$dm" -le "$cm" ]; then echo "PAIR OK: $dump (dump) is older than $csv (CSV) -- same-moment rule satisfied"
 else echo "PAIR FAIL: $csv predates $dump -- STALE CSV. Re-run Stage 1 export; do not reuse."; exit 1; fi
+# byte-identical copies under different names/ages: flag them so superseded ones get archived
+echo; sort -k3 < <(for f in $(find . -maxdepth 2 -type f -name "*.csv" -o -maxdepth 2 -type f -name "*.txt" -o -maxdepth 2 -type f -name "*.tsv" -o -maxdepth 2 -type f -name "*.bib"); do echo "$f $(mt "$f") $(h5 "$f")"; done) \
+  | awk '{n[$3]++; l[$3]=l[$3]" "$1} END{for(h in n) if(n[h]>1) print "DUPLICATE CONTENT (same md5, keep the newest, snapshot the rest):" l[h]}'

@@ -8,6 +8,12 @@
   before attaching or pairing inputs -- the "which file is current" habit,
   made one command. Self-tested both cases; portable Mac/Linux.
 - CLAUDE.md session pattern updated to use both.
+- data_currency.sh v2 (after first live run): searches subfolders for the
+  newest dump/CSV, and reports byte-identical copies under different
+  names/ages ("DUPLICATE CONTENT") so superseded inputs get snapshotted.
+  First run's finding: the Aug-14 and Aug-15 reference CSVs are md5-identical
+  (no reference-table change) -- verdict still keyed to export time, because
+  the same-moment rule is about provenance, not bytes.
 - Decision recorded: repo stays PUBLIC. Chat sessions clone by HTTPS with no
   ssh, so deploy keys can't serve them; private would revert self-fetch to
   Brian attaching archives. Audit shows nothing sensitive in the repo.
