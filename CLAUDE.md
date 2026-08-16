@@ -37,6 +37,13 @@ is the rules of engagement.
    what and why. Push after each verified unit of work. **Before any commit,
    `bash smoke.sh` from the repo root must print SMOKE PASS** — it catches
    truncated files and regressions of the hard-won fixes.
+   **Boundary: smoke proves the code, not the pipeline.** A cold clone can
+   verify syntax, tripwires, and importability — it cannot verify results,
+   because data is not in git by design. The data-side gates run only where
+   data lives: Stage 2's `RESULT: PASS` + 100.00% join, Stage 3's duplicate
+   and agreement checks, and the diff_history counts oracle (~2 recent-acts /
+   ~480 added-refs on the July inputs). SMOKE PASS on a fresh clone is never
+   evidence that a pipeline run is correct.
 7. **Detached-script provenance**: whenever a script is copied to a server
    (docker cp, curl from raw, scp), record in the session log the commit it
    came from (`git rev-parse --short HEAD`) and the file's md5 — a script

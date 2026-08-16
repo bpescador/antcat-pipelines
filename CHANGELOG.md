@@ -1,5 +1,11 @@
 # antcat-pipelines — changelog
 
+## 2026-08-16 -- smoke boundary stated (from the dashboard project's review)
+- CLAUDE.md rule 6: smoke proves the code, not the pipeline. Data-side gates
+  (Stage 2/3 gates, the diff_history counts oracle) run only where data
+  lives; SMOKE PASS on a fresh clone is never evidence a run is correct.
+  Applies to every repo on this model; this one is the reference.
+
 ## 2026-08-15d -- requirements.txt, data_currency.sh (from the genomics review)
 - requirements.txt: bibtexparser<2 (Stage-2 gate, v1 API) and python-docx
   (parse_bolton). smoke.sh now warns if bibtexparser v1 isn't importable.
