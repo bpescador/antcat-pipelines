@@ -1,5 +1,17 @@
 # antcat-pipelines — changelog
 
+## 2026-08-15d -- requirements.txt, data_currency.sh (from the genomics review)
+- requirements.txt: bibtexparser<2 (Stage-2 gate, v1 API) and python-docx
+  (parse_bolton). smoke.sh now warns if bibtexparser v1 isn't importable.
+- data_currency.sh: lists every data input with age + md5 and applies the
+  same-moment rule to the newest dump/CSV pair (PAIR OK / PAIR FAIL). Run
+  before attaching or pairing inputs -- the "which file is current" habit,
+  made one command. Self-tested both cases; portable Mac/Linux.
+- CLAUDE.md session pattern updated to use both.
+- Decision recorded: repo stays PUBLIC. Chat sessions clone by HTTPS with no
+  ssh, so deploy keys can't serve them; private would revert self-fetch to
+  Brian attaching archives. Audit shows nothing sensitive in the repo.
+
 ## 2026-08-15c -- pre-commit smoke test and provenance rule
 - smoke.sh added (syntax-checks every .py/.sh/.rb; tripwires for the PAGE_RE
   fix, the canonical diff_history branch, and BibTeX bracket balancing).

@@ -12,6 +12,9 @@ done
 command -v ruby >/dev/null && for f in $(find . -name "*.rb" -not -path "./.git/*"); do
   ruby -c "$f" >/dev/null || { echo "SYNTAX FAIL $f"; fail=1; }
 done
+# environment: the Stage-2 gate needs bibtexparser v1 (requirements.txt)
+python3 -c "import bibtexparser as b; assert b.__version__.startswith('1.'), b.__version__" 2>/dev/null \
+  || echo "WARN: bibtexparser v1 not importable here -- pip install -r requirements.txt before Stage 2 (not a commit blocker)"
 # regression tripwires -- each grep must hit or a hard-won fix has been lost
 grep -q 'PDF|' export_antcat_names.py            || { echo "TRIPWIRE: PAGE_RE DOI/PDF fix missing from export_antcat_names.py"; fail=1; }
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }

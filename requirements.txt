@@ -1,0 +1,4 @@
+# antcat-pipelines -- third-party Python dependencies. Everything else is stdlib.
+# Install: pip install -r requirements.txt   (agent sandboxes: add --break-system-packages)
+bibtexparser<2        # build_tw_exports.sh strict-parse gate uses the v1 API (1.x); v2 breaks it
+python-docx>=1.1      # bolton/parse_bolton.py reads Bolton's .docx catalogue (`from docx import Document`)

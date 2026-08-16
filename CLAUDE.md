@@ -48,7 +48,10 @@ is the rules of engagement.
 
 ## Session pattern
 
-Start: `git pull`, read WORKFLOW.md, state which stage you're executing.
+Start: `git pull`, `pip install -r requirements.txt` if the smoke env check
+warns, read WORKFLOW.md, state which stage you're executing. Before pairing
+or attaching any data inputs: `bash data_currency.sh` — it lists what exists
+with age and md5 and enforces the same-moment rule on the newest dump/CSV pair.
 End: summarize what ran, what was verified, what changed on disk and in git,
 and what the next session should pick up. If the session touched process
 knowledge, update WORKFLOW.md or the relevant runbook in the same session and
