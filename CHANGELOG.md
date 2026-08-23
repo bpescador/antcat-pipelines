@@ -1,5 +1,11 @@
 # antcat-pipelines — changelog
 
+## 2026-08-23 -- reciprocal adoption from the genomics repos' Guide v2
+- CLAUDE.md rules 8-9 added: anchor-asserted scripted edits (all files, not
+  just docs) and WHERE-headed, &&-chained command blocks. Both were already
+  this project's practice; now they are written down, per our own rule that
+  sessions only know what is written down.
+
 ## 2026-08-16 -- smoke boundary stated (from the dashboard project's review)
 - CLAUDE.md rule 6: smoke proves the code, not the pipeline. Data-side gates
   (Stage 2/3 gates, the diff_history counts oracle) run only where data

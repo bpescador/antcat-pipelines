@@ -48,7 +48,13 @@ is the rules of engagement.
    (docker cp, curl from raw, scp), record in the session log the commit it
    came from (`git rev-parse --short HEAD`) and the file's md5 — a script
    running off-repo must always be traceable to the exact version.
-8. **When Brian gives an instruction that conflicts with a runbook, say so
+8. **Anchor-asserted edits**: every scripted change to any file asserts the
+   exact text it replaces and fails loudly if absent — a silent no-op leaves
+   a file looking updated when it isn't. (Adopted from the genomics projects.)
+9. **Command blocks handed to Brian**: one machine per block with a
+   `# WHERE:` header, and `&&`-chained so a failed step stops the sequence —
+   an unchained failed cp has silently produced an incomplete commit twice.
+10. **When Brian gives an instruction that conflicts with a runbook, say so
    before acting** — the runbooks encode hard-won failures (DOI page leak,
    append-ordering bug, wrong-terminal executions). Don't silently override
    them, and don't silently obey either.
