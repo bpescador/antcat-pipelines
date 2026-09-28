@@ -1,5 +1,18 @@
 # antcat-pipelines — changelog
 
+## 2026-09-28 -- build_name_dictionary.py (old name -> valid name)
+- New script, repo root: builds Steve Shattuck's dictionary of old species-group
+  names and their current valid names from a worldants dump. First run on the
+  2026-09-28 dump: 14,957 rows (9,334 obsolete combinations, 5,153 synonyms,
+  470 misspellings); 2,627 needed more than one hop; 77 old names map to more
+  than one valid name (old homonymous combinations); 265 chains end at a
+  non-valid name and are flagged rather than dropped. Junior homonyms are not
+  included: the dump carries no replacement name for them (export_antcat_names.py
+  resolves those from the history prose, if ever needed here).
+- Two dump facts worth keeping: `current valid name` is ONE hop (a misspelling
+  can point at a synonym), and it is prefixed with the subfamily.
+- .gitignore: antcat__name_dictionary_*.csv (output is data).
+
 ## 2026-08-23 -- reciprocal adoption from the genomics repos' Guide v2
 - CLAUDE.md rules 8-9 added: anchor-asserted scripted edits (all files, not
   just docs) and WHERE-headed, &&-chained command blocks. Both were already

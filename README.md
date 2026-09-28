@@ -19,6 +19,16 @@ genus-group names, status citations, type material. Runbook:
 `bolton/BOLTON_SYNC_RUNBOOK.md` (v2 — supersedes v1; lessons from the July
 2026 run in `bolton/CHANGELOG_ENTRY.md`).
 
+## One-off exports from the nightly dump
+
+`build_name_dictionary.py` builds a two-column dictionary of old species-group
+names (obsolete combinations, synonyms, misspellings) and the valid name each
+maps to today, from a worldants dump. Made for Steve Shattuck's literature bot,
+September 2026. Read-only; follows `current valid name` chains to the end and
+strips the subfamily prefix the dump puts on that column.
+`python3 build_name_dictionary.py <worldants.txt>` writes
+`antcat__name_dictionary_YYYYMMDD.csv` (git-ignored, like all data).
+
 ## Shared code
 
 `protonym.py` (repo root) is the name-identity module — protonym parsing,
