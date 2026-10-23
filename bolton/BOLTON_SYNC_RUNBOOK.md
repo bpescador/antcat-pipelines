@@ -180,7 +180,7 @@ Layer 0 also owns **formatting recovery**. Barry encodes meaning in Word formatt
 |---|---|---|
 | protonym identity | `protonym.py` — exists, shared, 99.2% match on 2026 data | keep; add author normalisation (§3.1) |
 | reference matching | `citation_match.py` — exists but lives *inside* the status-refs pipeline | **extract to shared** |
-| depository | `bolton/diff_depositories.py`, extracted 2026-10-23 from the July chat (`--july` = July logic); parity check pending | prove parity, then move to `resolve/` |
+| depository | `bolton/diff_depositories.py` (resolver + diff), extracted 2026-10-23; parity with July shown | move to `resolve/` with the others |
 | author normalisation | **does not exist as a shared component** | **build** (§3.1) |
 
 **Layer 3 — content comparison.** One script per comparison, consuming resolved entities. These
@@ -262,6 +262,29 @@ Record the match rates. 2026 baselines to compare against:
 
 A materially lower rate next run means something changed in the input, not that the catalogues
 diverged. Investigate before proceeding.
+
+**Depositories** (resolver and diff in one script; inputs from Phases 0-2):
+
+```bash
+# WHERE: Mac, repo root. Data stays in ~/antcat/snapshots/, never in git.
+PYTHONPATH=.:bolton python3 bolton/diff_depositories.py \
+  --ngc-blocks <parse_bolton out>/bolton_species_blocks.jsonl \
+  --protonyms protonyms_species_typeinfo.jsonl --institutions institutions.jsonl \
+  --bolton-list "<ngc_dir>/SUB. 8 DEPOSITORIES OF TYPE-MATERIAL.docx" \
+  --crosswalk antcat__depository_crosswalk_<date>.csv \
+  --errata antcat__ngc_errata_confirmed_<date>.csv --out <run_dir>
+python3 bolton/depository_review_sheet.py --run <run_dir> --protonyms protonyms_species_typeinfo.jsonl \
+  --hints antcat__depository_review_hints_<date>.csv --xlsx antcat__depository_review_<date>.xlsx
+```
+
+- `--crosswalk`: reviewer-confirmed code pairs (`code_a,code_b,relation`). Only `same` and
+  `same-for-comparison` are joined. Better still, put each pair into AntCat as an `[Also]` note;
+  the institutions export then carries it and the crosswalk can shrink.
+- `--errata`: reviewer-confirmed Bolton typos (`ngc_code,correct_code`). They override the
+  automatic one-letter guess, which cannot find a non-adjacent swap (`MHNW` = `NHMW`).
+- `--july` reproduces the July 2026 logic exactly; use it only to check a change.
+- The workbook carries only B (conflicts), A (NGC has more) and the fill candidates. C rows
+  (AntCat has more) stay in the CSV.
 
 ## PHASE 4 — Entity exceptions → review [GATE 1]
 
@@ -538,20 +561,20 @@ Record these every run in `antcat_open_items.md`. Once AntCat absorbs a round of
 residuals should **shrink**. If they do not, either the corrections did not land or the diff is
 wrong — and this is the only way you will notice.
 
-| metric | 2026 baseline |
-|---|---|
-| NGC species-group headwords parsed | 23,718 |
-| AntCat species-group protonyms | 24,330 |
-| protonym key match rate | 99.2% (22,298 / 22,468) |
-| depository concordance (raw) | 94.0% |
-| depository concordance (after resolution) | 95.9% |
-| depository residual | 740 |
-| — NGC has extra (actionable) | 187 |
-| — both differ | 139 |
-| — AntCat has extra (likely AntCat correct) | 414 |
-| type-material fill candidates | 11 |
-| Barry errata raised (depositories) | 21 |
-| AntCat institution gaps | 1 (`PMCT`) |
+| metric | 2026 baseline (July) | 2026-10-23 rerun |
+|---|---|---|
+| NGC species-group headwords parsed | 23,718 | 23,718 |
+| AntCat species-group protonyms | 24,330 | 24,377 |
+| protonym key match rate | 99.2% (22,298 / 22,468) | same |
+| depository concordance (raw) | 94.0% | 94.4% of 17,940 |
+| depository concordance (after resolution) | 95.9% | 96.6% (V2 + crosswalk + errata) |
+| depository residual | 740 | 613 (636 with `--july`) |
+| — NGC has extra (actionable) | 187 | 111 |
+| — both differ | 139 | 80 |
+| — AntCat has extra (likely AntCat correct) | 414 | 422 |
+| type-material fill candidates | 11 | 11 (not yet done) |
+| Barry errata raised (depositories) | 21 | 21, plus 2 new: `OMNH`→`ONHM` ×3, `MHNB`→`NHMB` ×1 |
+| AntCat institution gaps | 1 (`PMCT`) | 0 (`PMCT` added) |
 | history-order consistency (pairwise) | 94.1% of 32,445 |
 | protonyms violating a strong order rule | 243 (1.8% of 13,430) |
 

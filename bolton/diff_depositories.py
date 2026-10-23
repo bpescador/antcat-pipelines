@@ -37,6 +37,10 @@ V2 changes (default; --july turns them off):
   * Iteration is sorted, so reruns give identical files. July iterated a set; the
     one effect was which reading won for a typo code that resolves two ways.
   * The residual sheet gains antcat_url and the AntCat depository segments.
+  * --errata CSV (ngc_code,correct_code): Bolton typos already confirmed by a
+    reviewer. They replace the automatic guess for those codes. Needed because
+    a code can fit two real codes (MHNW: July guessed MNHW, Bradley says NHMW,
+    which no one-letter rule finds).
 
 Run from the repo root (imports protonym.py):
   PYTHONPATH=.:bolton python3 bolton/diff_depositories.py \\
@@ -45,6 +49,7 @@ Run from the repo root (imports protonym.py):
       --institutions institutions.jsonl                 (bolton/institutions_export.rb) \\
       --bolton-list  "SUB. 8 DEPOSITORIES OF TYPE-MATERIAL.docx" \\
       [--crosswalk   antcat__depository_crosswalk_YYYYMMDD.csv] \\
+      [--errata      antcat__ngc_errata_confirmed_YYYYMMDD.csv] \\
       --out <dir>
 
 July 2026 baseline (runbook section 5): 22,298 matched, 11 fill candidates,
@@ -200,6 +205,12 @@ def build_classes(inst_rows, crosswalk_pairs=()):
     return cls, n_alias
 
 
+def load_errata(path):
+    return {(r.get('ngc_code') or '').strip(): (r.get('correct_code') or '').strip()
+            for r in csv.DictReader(open(path, encoding='utf-8'))
+            if (r.get('ngc_code') or '').strip() and (r.get('correct_code') or '').strip()}
+
+
 def load_crosswalk(path):
     pairs, skipped = [], Counter()
     for r in csv.DictReader(open(path, encoding='utf-8')):
@@ -280,14 +291,15 @@ def main(argv=None):
     ap.add_argument('--institutions', required=True)
     ap.add_argument('--bolton-list', required=True)
     ap.add_argument('--crosswalk')
+    ap.add_argument('--errata')
     ap.add_argument('--july', action='store_true', help='July 2026 logic exactly (no V2 changes)')
     ap.add_argument('--out', required=True)
     a = ap.parse_args(argv)
-    if a.july and a.crosswalk:
-        sys.exit('--july reproduces July: leave out --crosswalk')
+    if a.july and (a.crosswalk or a.errata):
+        sys.exit('--july reproduces July: leave out --crosswalk and --errata')
     os.makedirs(a.out, exist_ok=True)
     M = {'mode': 'july' if a.july else 'v2', 'inputs': {}}
-    for k in ('ngc_blocks', 'protonyms', 'institutions', 'bolton_list', 'crosswalk'):
+    for k in ('ngc_blocks', 'protonyms', 'institutions', 'bolton_list', 'crosswalk', 'errata'):
         p = getattr(a, k)
         if p:
             M['inputs'][k] = {'path': os.path.basename(p),
@@ -346,13 +358,14 @@ def main(argv=None):
     M['comparable'] = len(rows)
 
     # 6. typos (one map for the whole run; a code with two readings keeps the last)
-    typo, tpairs = {}, Counter()
+    confirmed = load_errata(a.errata) if a.errata else {}
+    typo, tpairs = dict(confirmed), Counter()
     for k, n, d in rows:
         if {klass(x) for x in n} == {klass(x) for x in d}:
             continue
         dclass = {klass(x) for x in d}
         for c in sorted(n):
-            if c in known:
+            if c in known or c in confirmed:
                 continue
             cand = [g for g in sorted(known) if is_typo_of(c, g)]
             hit = [g for g in cand if klass(g) in dclass]
@@ -392,12 +405,15 @@ def main(argv=None):
                 seen.setdefault((c, typo[c]), []).append(k)
     with open(os.path.join(a.out, 'ngc_depository_errata.csv'), 'w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
-        w.writerow(['ngc_code', 'correct_code', 'n_records', 'in_bolton_own_list', 'example_taxon', 'ngc_depository_line'])
+        w.writerow(['ngc_code', 'correct_code', 'n_records', 'in_bolton_own_list', 'example_taxon', 'ngc_depository_line']
+                   + ([] if a.july else ['source']))
         for (b, g), ks in sorted(seen.items(), key=lambda kv: (-len(kv[1]), kv[0])):
             r = nk[ks[0]]
             w.writerow([b, g, len(ks), 'yes' if b in bolton else 'no',
-                        f"{r['genus']} {r['epithet']} {r['author']} {r['year']}", dep_line(r)])
+                        f"{r['genus']} {r['epithet']} {r['author']} {r['year']}", dep_line(r)]
+                       + ([] if a.july else ['confirmed' if b in confirmed else 'auto']))
     M['errata'] = len(seen)
+    M['errata_confirmed_input'] = len(confirmed)
 
     pri = Counter()
     with open(os.path.join(a.out, 'type_depository_residual.csv'), 'w', newline='', encoding='utf-8') as f:

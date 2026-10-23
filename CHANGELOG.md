@@ -9,9 +9,17 @@
   "same-for-comparison" rows only); hyphenated codes (NMNH-S) and known spaced
   codes ("NMNH NASU") read whole; sorted iteration; residual sheet gains
   antcat_url and the AntCat depository segments; metrics.json per run.
-- Tested on a synthetic case only. PARITY NOT YET SHOWN: the July inputs are
-  gone, so the check is --july on fresh exports against July's 21 errata codes
-  (the Bolton side is unchanged). Record the result here.
+- Parity (same day, --july on fresh exports; the July inputs no longer exist):
+  matched 22,298, split 20,048/298/1,941/11 and 11 fill candidates all equal
+  July; 21 errata codes and 47 records equal July's list except MHNW, the code
+  July noted as reading two ways (July kept MNHW from set order, sorted order
+  keeps MHNG; the reviewer says NHMW). Residual 636 vs July 740: AntCat
+  [Also] edits since July.
+- --errata added (reviewer-confirmed typos override the automatic guess).
+- bolton/depository_review_sheet.py: residual run -> reviewer workbook (Read me,
+  Conflicts B, NGC has more A, Fill), decision list, optional hints CSV.
+- First V2 run (2026-10-23, crosswalk 188 pairs, 21 confirmed errata): 96.6%,
+  residual 613 = A 111 / B 80 / C 422. Numbers in BOLTON_SYNC_RUNBOOK.md section 5.
 
 ## 2026-09-28 -- build_name_dictionary.py (old name -> valid name)
 - New script, repo root: builds Steve Shattuck's dictionary of old species-group
