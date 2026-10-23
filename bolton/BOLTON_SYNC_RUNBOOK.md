@@ -285,6 +285,10 @@ python3 bolton/depository_review_sheet.py --run <run_dir> --protonyms protonyms_
 - `--july` reproduces the July 2026 logic exactly; use it only to check a change.
 - The workbook carries only B (conflicts), A (NGC has more) and the fill candidates. C rows
   (AntCat has more) stay in the CSV.
+- Better for the reviewer: `bolton/depository_triage.py` gives every A/B row a suggested
+  decision and its evidence, and `bolton/review_week.py` splits the work into daily tabs with
+  a time estimate each (keep each day to a few hours; send one week at a time). Fill records
+  get draft AntCat text from `bolton/draft_type_text.py`.
 
 ## PHASE 4 — Entity exceptions → review [GATE 1]
 

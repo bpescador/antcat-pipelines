@@ -26,6 +26,16 @@
 - V2 run after the fix (2026-10-23, crosswalk 188 pairs, 21 confirmed errata):
   19,065 comparable, 97.0%, residual 567 = A 41 / B 83 / C 443. Numbers in
   BOLTON_SYNC_RUNBOOK.md section 5.
+- Reviewer-load tools: depository_triage.py (bucket, suggested decision and
+  evidence per A/B row: same-collection pair, AntCat notes already mention the
+  code, Bolton's author-to-depository index, quoted original description, or
+  nothing); draft_type_text.py (NGC type block -> draft AntCat primary /
+  secondary / notes text, for fill records); review_week.py (one workbook, one
+  tab per day, time estimate per tab from per-row minutes). First use: a
+  five-day package for the reviewer, about 9.5 hours in all.
+- Lesson: summarised web fetches misreport exact data (one gave MZSP where
+  AntCat says DZUP). Evidence quotes come from AntCat's own export or from
+  the paper text, never from a summary.
 
 ## 2026-09-28 -- build_name_dictionary.py (old name -> valid name)
 - New script, repo root: builds Steve Shattuck's dictionary of old species-group
