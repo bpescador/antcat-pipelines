@@ -18,8 +18,14 @@
 - --errata added (reviewer-confirmed typos override the automatic guess).
 - bolton/depository_review_sheet.py: residual run -> reviewer workbook (Read me,
   Conflicts B, NGC has more A, Fill), decision list, optional hints CSV.
-- First V2 run (2026-10-23, crosswalk 188 pairs, 21 confirmed errata): 96.6%,
-  residual 613 = A 111 / B 80 / C 422. Numbers in BOLTON_SYNC_RUNBOOK.md section 5.
+- AntCat label fix (V2): July read only "Primary/Secondary type depository/-ies:".
+  AntCat also writes "Type-depository:" (1,105 records, left out of the July
+  comparison altogether), "Paratype-depositories:" (254) and "... depositories
+  and specimens:" (116, whose codes July missed, so they showed as "NGC has
+  more"). 69 of the 111 A rows of the first V2 run were this bug.
+- V2 run after the fix (2026-10-23, crosswalk 188 pairs, 21 confirmed errata):
+  19,065 comparable, 97.0%, residual 567 = A 41 / B 83 / C 443. Numbers in
+  BOLTON_SYNC_RUNBOOK.md section 5.
 
 ## 2026-09-28 -- build_name_dictionary.py (old name -> valid name)
 - New script, repo root: builds Steve Shattuck's dictionary of old species-group

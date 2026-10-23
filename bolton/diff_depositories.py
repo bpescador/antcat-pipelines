@@ -34,6 +34,10 @@ V2 changes (default; --july turns them off):
   * Codes with a hyphen suffix (NMNH-S, NMNH-NM) are read whole. July read NMNH-S
     as NMNH.
   * Known codes containing a space ("NMNH NASU", "NZC ZSI") are read whole.
+  * AntCat depository labels: July read only "Primary/Secondary type depository/-ies:".
+    AntCat also uses "Type-depository:" (1,105 records, which July left out of the
+    comparison), "Paratype-depositories:" (254) and "... depositories and specimens:"
+    (116), whose codes July missed, creating false "NGC has more" rows.
   * Iteration is sorted, so reruns give identical files. July iterated a set; the
     one effect was which reading won for a typo code that resolves two ways.
   * The residual sheet gains antcat_url and the AntCat depository segments.
@@ -124,6 +128,10 @@ def ngc_has_type(r):
 # ------------------------------------------------------- 3. code extraction
 DEP_NGC = re.compile(r'^Type-depositor(?:y|ies)\s*:\s*(.*)$', re.I)
 DEP_AC = re.compile(r'(?:Primary|Secondary) type depositor(?:y|ies)\s*:\s*([^.]*)', re.I)
+# V2: every label AntCat uses (counted 2026-10-23): Primary/Secondary type depository/-ies,
+# Type-depository (1,105 records), Paratype-depositories (254), "... and specimens" (116), ...
+DEP_AC_V2 = re.compile(r'(?:Primary type|Primary typ|Secondary type|Paratype-|Type-|Type|Primary)\s*'
+                       r'depositor(?:y|ies)(?:\s+and\s+specimens?)?\s*:\s*([^.]*)', re.I)
 CODE_JULY = re.compile(r'\b([A-Z]{3,6}(?:[A-Z0-9]{0,3})?)\b')
 CODE_V2 = re.compile(r'\b([A-Z]{3,6}(?:[A-Z0-9]{0,3})?(?:-[A-Z]{1,3})?)(?![A-Za-z0-9-])')
 
@@ -131,6 +139,7 @@ CODE_V2 = re.compile(r'\b([A-Z]{3,6}(?:[A-Z0-9]{0,3})?(?:-[A-Z]{1,3})?)(?![A-Za-
 class Extractor:
     def __init__(self, july, spaced_codes=()):
         self.code = CODE_JULY if july else CODE_V2
+        self.dep_ac = DEP_AC if july else DEP_AC_V2
         # longest first, so a longer spaced code wins over a shorter one inside it
         self.spaced = [] if july else sorted(set(spaced_codes), key=len, reverse=True)
 
@@ -159,12 +168,12 @@ class Extractor:
 
     def ac(self, a):
         out = set()
-        for m in DEP_AC.finditer(self.ac_text(a)):
+        for m in self.dep_ac.finditer(self.ac_text(a)):
             out |= self.codes(m.group(1))
         return out
 
     def ac_segments(self, a):
-        return ' | '.join(m.group(0).strip() for m in DEP_AC.finditer(self.ac_text(a)))
+        return ' | '.join(m.group(0).strip() for m in self.dep_ac.finditer(self.ac_text(a)))
 
 
 # --------------------------------------------------- 4. equivalence classes

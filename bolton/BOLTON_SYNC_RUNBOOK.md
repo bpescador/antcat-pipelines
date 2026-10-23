@@ -566,14 +566,14 @@ wrong — and this is the only way you will notice.
 | NGC species-group headwords parsed | 23,718 | 23,718 |
 | AntCat species-group protonyms | 24,330 | 24,377 |
 | protonym key match rate | 99.2% (22,298 / 22,468) | same |
-| depository concordance (raw) | 94.0% | 94.4% of 17,940 |
-| depository concordance (after resolution) | 95.9% | 96.6% (V2 + crosswalk + errata) |
-| depository residual | 740 | 613 (636 with `--july`) |
-| — NGC has extra (actionable) | 187 | 111 |
-| — both differ | 139 | 80 |
-| — AntCat has extra (likely AntCat correct) | 414 | 422 |
+| depository concordance (raw) | 94.0% | 94.8% of 19,065 |
+| depository concordance (after resolution) | 95.9% | 97.0% (V2 + crosswalk + errata) |
+| depository residual | 740 | 567 (636 with `--july`) |
+| — NGC has extra (actionable) | 187 | 41 |
+| — both differ | 139 | 83 |
+| — AntCat has extra (likely AntCat correct) | 414 | 443 |
 | type-material fill candidates | 11 | 11 (not yet done) |
-| Barry errata raised (depositories) | 21 | 21, plus 2 new: `OMNH`→`ONHM` ×3, `MHNB`→`NHMB` ×1 |
+| Barry errata raised (depositories) | 21 | 21, plus `OMNH`→`ONHM` ×3, `MHNB`→`NHMB` ×1 and 3 automatic guesses to confirm (`MZBT`, `NHMG`, `VAZK`) |
 | AntCat institution gaps | 1 (`PMCT`) | 0 (`PMCT` added) |
 | history-order consistency (pairwise) | 94.1% of 32,445 |
 | protonyms violating a strong order rule | 243 (1.8% of 13,430) |
