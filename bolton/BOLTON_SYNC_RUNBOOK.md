@@ -180,7 +180,7 @@ Layer 0 also owns **formatting recovery**. Barry encodes meaning in Word formatt
 |---|---|---|
 | protonym identity | `protonym.py` — exists, shared, 99.2% match on 2026 data | keep; add author normalisation (§3.1) |
 | reference matching | `citation_match.py` — exists but lives *inside* the status-refs pipeline | **extract to shared** |
-| depository | built July 2026, lives in the type-material analysis | **extract to shared** |
+| depository | `bolton/diff_depositories.py`, extracted 2026-10-23 from the July chat (`--july` = July logic); parity check pending | prove parity, then move to `resolve/` |
 | author normalisation | **does not exist as a shared component** | **build** (§3.1) |
 
 **Layer 3 — content comparison.** One script per comparison, consuming resolved entities. These

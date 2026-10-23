@@ -1,5 +1,18 @@
 # antcat-pipelines — changelog
 
+## 2026-10-23 -- bolton/diff_depositories.py (depository resolver, recovered)
+- The July 2026 depository resolver and diff existed only as inline steps in the
+  chat "Mapping NGC type material to AntCat fields" (2026-07-23, turns 13, 19,
+  21), passing pickles between steps. Rebuilt as one script; `--july` runs the
+  July logic exactly.
+- V2 (default): Bradley's crosswalk CSV as a third alias source ("same" and
+  "same-for-comparison" rows only); hyphenated codes (NMNH-S) and known spaced
+  codes ("NMNH NASU") read whole; sorted iteration; residual sheet gains
+  antcat_url and the AntCat depository segments; metrics.json per run.
+- Tested on a synthetic case only. PARITY NOT YET SHOWN: the July inputs are
+  gone, so the check is --july on fresh exports against July's 21 errata codes
+  (the Bolton side is unchanged). Record the result here.
+
 ## 2026-09-28 -- build_name_dictionary.py (old name -> valid name)
 - New script, repo root: builds Steve Shattuck's dictionary of old species-group
   names and their current valid names from a worldants dump. First run on the
