@@ -17,6 +17,12 @@
 - --errata rows may carry protonym_id: OMNH -> ONHM applies to three Arabian records
   only, since OMNH is a real code (Osaka) everywhere else.
 - --july unchanged (byte-identical residual).
+- bolton/split_depository_specimens.py: drafts the split of AntCat's combined
+  "... depositories and specimens:" fields (117 on 30 Oct) into a depositories list and a
+  specimens field, markup kept; flags commas used where semicolons separate codes.
+  Checked: every code before a colon in each field is in its draft list.
+- review_week.py: each day tab gets a yellow "actual time" cell, so estimates can be
+  set from the reviewer's times (week 1 ran over, Day 4 most).
 - Fill-candidate lesson from the reviewer: AntCat gives no type information under
   replacement names, nomina nuda, or quadrinomials whose name was later used at
   another rank. A fill list must exclude them before it reaches anyone.

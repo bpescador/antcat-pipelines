@@ -72,7 +72,12 @@ def main():
         for i, t in enumerate(head, 1):
             c = ws.cell(row=i, column=1, value=t)
             c.font = Font(name=FONT, bold=(i == 1), size=11 if i == 1 else 10)
-        hr = len(head) + 2
+        # where the reviewer records the real time, so the next estimates are measured
+        tr = len(head) + 1
+        c = ws.cell(row=tr, column=1, value='Your actual time for this day, in minutes:')
+        c.font = Font(name=FONT, bold=True, size=10)
+        c = ws.cell(row=tr, column=3); c.fill = YELLOW
+        hr = len(head) + 3
         cols = d['columns']; ins = d.get('inputs', [])
         for j, (_, h, w) in enumerate(cols, 1):
             c = ws.cell(row=hr, column=j, value=h); c.font = Font(name=FONT, bold=True)
