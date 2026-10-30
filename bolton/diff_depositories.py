@@ -41,8 +41,13 @@ V2 changes (default; --july turns them off):
   * Iteration is sorted, so reruns give identical files. July iterated a set; the
     one effect was which reading won for a typo code that resolves two ways.
   * The residual sheet gains antcat_url and the AntCat depository segments.
-  * --errata CSV (ngc_code,correct_code): Bolton typos already confirmed by a
-    reviewer. They replace the automatic guess for those codes. Needed because
+  * Matching (found 2026-10-30 from the reviewer's week): July paired the FIRST record of
+    each side under (epithet, first author, year), so two species sharing all three could
+    be crossed (Cerapachys turneri got Dolichoderus turneri's NGC data, both Forel 1902h).
+    V2 splits shared keys by original genus and leaves the rest unmatched, listed in
+    unmatched_shared_keys.csv.
+  * --errata CSV (ngc_code,correct_code[,protonym_id]): Bolton typos already confirmed by a
+    reviewer; with protonym_id the reading applies to that record only. They replace the automatic guess for those codes. Needed because
     a code can fit two real codes (MHNW: July guessed MNHW, Bradley says NHMW,
     which no one-letter rule finds).
 
@@ -115,6 +120,54 @@ def load_ngc(path):
         else:
             nk[k] = r
     return nk, dup
+
+
+def orig_genus(name):
+    """first word of an original combination, subgenus dropped: 'Cerapachys (Phyracaces) turneri' -> cerapachys"""
+    toks = [x for x in re.sub(r'\([^)]*\)', ' ', fold(name or '')).split() if x]
+    return re.sub(r'[^a-z]', '', toks[0].lower()) if toks else ''
+
+
+def match_v2(ac_path, ngc_path):
+    """V2 matching. July paired the first record of each side under (epithet, first author,
+    year), so two species sharing all three (Dolichoderus turneri and Cerapachys turneri,
+    Forel 1902h) could be crossed. Here a key with more than one record on either side is
+    split by original genus; what is still not one-to-one is left unmatched and reported."""
+    A, N = {}, {}
+    for l in open(ac_path, encoding='utf-8'):
+        if l.strip():
+            r = json.loads(l); toks = (r.get('name') or '').split()
+            k = key(toks[-1] if toks else '', r.get('author'), r.get('year'))
+            if k: A.setdefault(k, []).append(r)
+    for l in open(ngc_path, encoding='utf-8'):
+        if l.strip():
+            r = json.loads(l); toks = (r.get('original_combination') or '').split()
+            k = key(toks[-1] if toks else r.get('epithet', ''), r.get('author'), r.get('year'))
+            if k: N.setdefault(k, []).append(r)
+    ac, nk, ambiguous = {}, {}, []
+    by_genus = 0
+    for k in sorted(set(A) & set(N)):
+        a_list, n_list = A[k], N[k]
+        if len(a_list) == 1 and len(n_list) == 1:
+            ac[k], nk[k] = a_list[0], n_list[0]
+            continue
+        ng = {}
+        for n in n_list:
+            ng.setdefault(orig_genus(n.get('original_combination')), []).append(n)
+        ag = {}
+        for r in a_list:
+            ag.setdefault(orig_genus(r.get('name')), []).append(r)
+        for g, rs in ag.items():
+            if g and len(rs) == 1 and len(ng.get(g, [])) == 1:
+                kk = k + (g,)
+                ac[kk], nk[kk] = rs[0], ng[g][0]; by_genus += 1
+            else:
+                for r in rs:
+                    ambiguous.append((k, r, ng.get(g, [])))
+    stats = dict(antcat_keys=len(A), antcat_keys_shared=sum(1 for v in A.values() if len(v) > 1),
+                 ngc_keys=len(N), ngc_keys_shared=sum(1 for v in N.values() if len(v) > 1),
+                 matched_by_genus=by_genus, ambiguous_left=len(ambiguous))
+    return ac, nk, ambiguous, stats
 
 
 TYPE = re.compile(r'^(Type-material|Type-locality|Type-localities|Type-depository|'
@@ -215,9 +268,19 @@ def build_classes(inst_rows, crosswalk_pairs=()):
 
 
 def load_errata(path):
-    return {(r.get('ngc_code') or '').strip(): (r.get('correct_code') or '').strip()
-            for r in csv.DictReader(open(path, encoding='utf-8'))
-            if (r.get('ngc_code') or '').strip() and (r.get('correct_code') or '').strip()}
+    """(global, per_record): a row with a protonym_id applies to that record only (OMNH is a
+    real code, Osaka, but three Arabian records mean ONHM)."""
+    glob, rec = {}, {}
+    for r in csv.DictReader(open(path, encoding='utf-8')):
+        b, g = (r.get('ngc_code') or '').strip(), (r.get('correct_code') or '').strip()
+        if not b or not g:
+            continue
+        pid = (r.get('protonym_id') or '').strip()
+        if pid:
+            rec[(pid, b)] = g
+        else:
+            glob[b] = g
+    return glob, rec
 
 
 def load_crosswalk(path):
@@ -315,8 +378,14 @@ def main(argv=None):
                               'md5': hashlib.md5(open(p, 'rb').read()).hexdigest()}
 
     # 1-2. match and split
-    ac, ac_dup = load_antcat(a.protonyms)
-    nk, nk_dup = load_ngc(a.ngc_blocks)
+    if a.july:
+        ac, ac_dup = load_antcat(a.protonyms)
+        nk, nk_dup = load_ngc(a.ngc_blocks)
+        ambiguous = []
+    else:
+        ac, nk, ambiguous, mstats = match_v2(a.protonyms, a.ngc_blocks)
+        ac_dup, nk_dup = mstats['antcat_keys_shared'], mstats['ngc_keys_shared']
+        M['matching'] = mstats
     both = sorted(set(nk) & set(ac))
     fill, compare = [], []
     split = Counter()
@@ -359,15 +428,19 @@ def main(argv=None):
     # 3. codes
     spaced = [c for c in cls if ' ' in c]
     X = Extractor(a.july, spaced)
-    rows = []
+    confirmed, rec_err = load_errata(a.errata) if a.errata else ({}, {})
+    rows, rec_applied = [], 0
     for k in compare:
         n, d = X.ngc(nk[k]), X.ac(ac[k])
+        pid = str(ac[k]['protonym_id'])
+        if rec_err and any((pid, c) in rec_err for c in n):
+            n = {rec_err.get((pid, c), c) for c in n}; rec_applied += 1
         if n and d:
             rows.append((k, n, d))
     M['comparable'] = len(rows)
+    M['errata_record_specific_applied'] = rec_applied
 
     # 6. typos (one map for the whole run; a code with two readings keeps the last)
-    confirmed = load_errata(a.errata) if a.errata else {}
     typo, tpairs = dict(confirmed), Counter()
     for k, n, d in rows:
         if {klass(x) for x in n} == {klass(x) for x in d}:
@@ -460,11 +533,20 @@ def main(argv=None):
             w.writerow([m, bolton[m], act])
     M['bolton_only_codes'] = len(gaps)
 
+    if not a.july:
+        with open(os.path.join(a.out, 'unmatched_shared_keys.csv'), 'w', newline='', encoding='utf-8') as f:
+            w = csv.writer(f)
+            w.writerow(['protonym_id', 'antcat_name', 'author', 'year', 'ngc_candidates_same_genus'])
+            for k, r, cands in ambiguous:
+                w.writerow([r['protonym_id'], r.get('name'), r.get('author'), r.get('year'),
+                            ' | '.join(f"{c.get('original_combination')} {c.get('author')} {c.get('year')}" for c in cands)])
     with open(os.path.join(a.out, 'metrics.json'), 'w', encoding='utf-8') as f:
         json.dump(M, f, indent=2)
 
     print(f"mode {M['mode']}")
     print(f"matched {len(both)}  (AntCat keyed {len(ac)}, NGC keyed {len(nk)})  split {dict(split)}")
+    if not a.july:
+        print(f"matching: {M['matching']}")
     print(f"fill candidates {len(fill)}")
     print(f"institutions {len(inst)}  classes {M['classes']} (multi-code {M['multi_code_classes']})"
           f"  crosswalk pairs {len(xw_pairs)}")

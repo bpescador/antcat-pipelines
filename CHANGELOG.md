@@ -1,5 +1,21 @@
 # antcat-pipelines — changelog
 
+## 2026-10-30 -- diff_depositories.py: genus-aware matching; record-specific errata
+- Found from the reviewer's returned week: July matched NGC to AntCat on (epithet,
+  first author, year) and kept the FIRST record of each side, so two species sharing
+  all three were crossed (Cerapachys turneri Forel 1902h got Dolichoderus turneri's
+  NGC depositories). 848 AntCat and 794 NGC keys are shared. 17 of the 143 record rows
+  in the 26 Oct week came from such crossings (7 of 13 on Day 5; 6 of the 11 fills).
+- V2 splits a shared key by original genus; what is still not one-to-one (134 AntCat
+  records) is left unmatched and listed in unmatched_shared_keys.csv. On the 23 Oct
+  data: 23,477 matched (22,298 before), fill candidates 11 -> 4, residual 598.
+- --errata rows may carry protonym_id: OMNH -> ONHM applies to three Arabian records
+  only, since OMNH is a real code (Osaka) everywhere else.
+- --july unchanged (byte-identical residual).
+- Fill-candidate lesson from the reviewer: AntCat gives no type information under
+  replacement names, nomina nuda, or quadrinomials whose name was later used at
+  another rank. A fill list must exclude them before it reaches anyone.
+
 ## 2026-10-23 -- bolton/diff_depositories.py (depository resolver, recovered)
 - The July 2026 depository resolver and diff existed only as inline steps in the
   chat "Mapping NGC type material to AntCat fields" (2026-07-23, turns 13, 19,
