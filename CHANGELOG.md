@@ -6,9 +6,14 @@
   all three were crossed (Cerapachys turneri Forel 1902h got Dolichoderus turneri's
   NGC depositories). 848 AntCat and 794 NGC keys are shared. 17 of the 143 record rows
   in the 26 Oct week came from such crossings (7 of 13 on Day 5; 6 of the 11 fills).
-- V2 splits a shared key by original genus; what is still not one-to-one (134 AntCat
-  records) is left unmatched and listed in unmatched_shared_keys.csv. On the 23 Oct
-  data: 23,477 matched (22,298 before), fill candidates 11 -> 4, residual 598.
+- V2 splits a shared key by original genus, then by full name (genus and all
+  epithets, subgenus and rank words dropped); what is still not one-to-one is left
+  unmatched and listed in unmatched_shared_keys.csv (99 on the 30 Oct data: 55
+  infrasubspecific names with no NGC entry, about 30 quadrinomials whose trinomial is
+  matched, a few identical homonyms on both sides).
+- 30 Oct run (exports md5 412e9486 / 9ef79a35, crosswalk and errata of 30 Oct):
+  23,512 matched, 20,198 comparable, 97.1%, residual 588 = A 35 / B 70 / C 483.
+  Of the 105 A+B rows, 102 were decided by the reviewer in the 26 Oct week; 3 are new.
 - --errata rows may carry protonym_id: OMNH -> ONHM applies to three Arabian records
   only, since OMNH is a real code (Osaka) everywhere else.
 - --july unchanged (byte-identical residual).

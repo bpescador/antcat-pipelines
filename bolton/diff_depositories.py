@@ -44,7 +44,8 @@ V2 changes (default; --july turns them off):
   * Matching (found 2026-10-30 from the reviewer's week): July paired the FIRST record of
     each side under (epithet, first author, year), so two species sharing all three could
     be crossed (Cerapachys turneri got Dolichoderus turneri's NGC data, both Forel 1902h).
-    V2 splits shared keys by original genus and leaves the rest unmatched, listed in
+    V2 splits shared keys by original genus, then by full name (genus and all epithets,
+    subgenus and rank words dropped), and leaves the rest unmatched, listed in
     unmatched_shared_keys.csv.
   * --errata CSV (ngc_code,correct_code[,protonym_id]): Bolton typos already confirmed by a
     reviewer; with protonym_id the reading applies to that record only. They replace the automatic guess for those codes. Needed because
@@ -128,6 +129,18 @@ def orig_genus(name):
     return re.sub(r'[^a-z]', '', toks[0].lower()) if toks else ''
 
 
+RANK_WORDS = {'var', 'subsp', 'st', 'r', 'n', 'nr', 'f', 'm', 'ab', 'race', 'v', 'sp', 'ssp',
+              'form', 'forma', 'morph', 'natio', 'stirps'}
+
+
+def full_name(name):
+    """genus + every epithet, subgenus and rank words dropped:
+    'Monomorium (Equesimessor) chobauti subsp. ajjer' -> 'monomorium chobauti ajjer'"""
+    toks = re.sub(r'\([^)]*\)', ' ', fold(name or '')).replace('.', ' ').split()
+    return ' '.join(re.sub(r'[^a-z]', '', x.lower()) for x in toks
+                    if re.sub(r'[^a-z]', '', x.lower()) and x.lower().strip('.') not in RANK_WORDS)
+
+
 def match_v2(ac_path, ngc_path):
     """V2 matching. July paired the first record of each side under (epithet, first author,
     year), so two species sharing all three (Dolichoderus turneri and Cerapachys turneri,
@@ -145,7 +158,7 @@ def match_v2(ac_path, ngc_path):
             k = key(toks[-1] if toks else r.get('epithet', ''), r.get('author'), r.get('year'))
             if k: N.setdefault(k, []).append(r)
     ac, nk, ambiguous = {}, {}, []
-    by_genus = 0
+    by_genus = by_full = 0
     for k in sorted(set(A) & set(N)):
         a_list, n_list = A[k], N[k]
         if len(a_list) == 1 and len(n_list) == 1:
@@ -161,12 +174,24 @@ def match_v2(ac_path, ngc_path):
             if g and len(rs) == 1 and len(ng.get(g, [])) == 1:
                 kk = k + (g,)
                 ac[kk], nk[kk] = rs[0], ng[g][0]; by_genus += 1
-            else:
-                for r in rs:
-                    ambiguous.append((k, r, ng.get(g, [])))
+                continue
+            # still shared: try the full name (genus + all epithets), one-to-one only
+            nf = {}
+            for n in ng.get(g, []):
+                nf.setdefault(full_name(n.get('original_combination')), []).append(n)
+            af = {}
+            for r in rs:
+                af.setdefault(full_name(r.get('name')), []).append(r)
+            for f, rr in af.items():
+                if f and len(rr) == 1 and len(nf.get(f, [])) == 1:
+                    kk = k + (g, f)
+                    ac[kk], nk[kk] = rr[0], nf[f][0]; by_full += 1
+                else:
+                    for r in rr:
+                        ambiguous.append((k, r, ng.get(g, [])))
     stats = dict(antcat_keys=len(A), antcat_keys_shared=sum(1 for v in A.values() if len(v) > 1),
                  ngc_keys=len(N), ngc_keys_shared=sum(1 for v in N.values() if len(v) > 1),
-                 matched_by_genus=by_genus, ambiguous_left=len(ambiguous))
+                 matched_by_genus=by_genus, matched_by_full_name=by_full, ambiguous_left=len(ambiguous))
     return ac, nk, ambiguous, stats
 
 
