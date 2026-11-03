@@ -21,6 +21,8 @@ grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: b
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
 grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
 grep -q "needs_locality='yes (from publication)'" antweb_types/build_inserts.py || { echo "TRIPWIRE: no-AntWeb-locality rule missing from antweb_types/build_inserts.py"; fail=1; }
+PYTHONPATH=.:bolton python3 -c "from diff_depositories import literal_codes as L; assert L(['INBio','CASC','NMNH NASU'])==['INBio','NMNH NASU']" 2>/dev/null || { echo "TRIPWIRE: mixed-case codes (INBio) not read by bolton/diff_depositories.py"; fail=1; }
+grep -q 'def use_codes' bolton/split_depository_specimens.py || { echo "TRIPWIRE: mixed-case codes missing from bolton/split_depository_specimens.py"; fail=1; }
 # behaviour check on a made-up fixture (stdlib only, temp folder): the June 2026 decisions
 python3 antweb_types/selftest.py | grep -q 'SELFTEST PASS' || { echo "SELFTEST FAIL: run python3 antweb_types/selftest.py"; fail=1; }
 [ $fail -eq 0 ] && echo "SMOKE PASS" || { echo "SMOKE FAIL -- do not commit"; exit 1; }

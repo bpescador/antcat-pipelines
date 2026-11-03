@@ -1,5 +1,18 @@
 # antcat-pipelines — changelog
 
+## 2026-11-03 -- depository scripts read mixed-case codes (INBio)
+- The reviewer found INBio missed in the 2 Nov week (Temnothorax nebliselva): both scripts
+  read codes as upper-case runs only. AntCat has four mixed-case codes: INBio, CeNak,
+  PMSPbU, Raffles.
+- diff_depositories.py: literal_codes() now matches mixed-case codes literally, as it
+  already did for spaced ones ("NMNH NASU"). 30 Oct inputs: residual 588 -> 586 (A 35 -> 33;
+  201811 and 201899, NGC INBC = AntCat INBio through its [Also] note); nothing else changed.
+  --july output byte-identical before and after.
+- split_depository_specimens.py: optional third argument institutions.jsonl; with it,
+  mixed-case codes are read. 30 Oct export: 1 of 117 drafts changes (201899 gains INBio);
+  without the argument the output is byte-identical to before.
+- smoke.sh: tripwires for both.
+
 ## 2026-11-03 -- antweb_types/ (AntWeb type-specimen linker, recovered)
 - The June 2026 AntWeb ⇄ AntCat type linker existed only in the sandbox of the chat
   "Automating type specimen linking between Antcat and Antweb" (7b114e80, 8 Jun 2026).

@@ -11,13 +11,25 @@ depositories. DRAFT for a reviewer to check and paste; nothing is written to Ant
 "Paratype-depositories and specimens" becomes "Secondary type ...". The rest of the
 field, including markup, is kept as stored.
 
-  python3 bolton/split_depository_specimens.py protonyms_species_typeinfo.jsonl out.csv
+  python3 bolton/split_depository_specimens.py protonyms_species_typeinfo.jsonl out.csv [institutions.jsonl]
+
+With institutions.jsonl, mixed-case codes (INBio, CeNak, PMSPbU, Raffles) are read too; without it they
+are missed, as INBio was in the 2026-11-02 week.
 """
 import csv, json, re, sys
 
 SEG = re.compile(r'(?P<label>(?P<tier>Primary|Secondary) type depositor(?:y|ies)|Paratype-depositor(?:y|ies)|Type-depositor(?:y|ies))'
                  r' and specimens?\s*:\s*(?P<body>.*?)(?P<end>\.\s*(?=(?:Primary|Secondary) type [a-z]+:|Paratype-|Type-)|\.?\s*$)', re.S)
-CODE = re.compile(r'[A-Z]{2,7}(?:-[A-Z]{1,4})?')
+C = r'[A-Z]{2,7}(?:-[A-Z]{1,4})?'
+CODE = re.compile(C)
+
+
+def use_codes(extra):
+    """also accept these literal codes (mixed case, from AntCat's institutions)"""
+    global C, CODE
+    alts = sorted({re.escape(x) for x in extra}, key=len, reverse=True)
+    C = r'(?:' + '|'.join(alts + [r'[A-Z]{2,7}(?:-[A-Z]{1,4})?']) + r')'
+    CODE = re.compile(C)
 
 
 def codes_in(body):
@@ -26,7 +38,7 @@ def codes_in(body):
     out = []
     flat = re.sub(r'\([^()]*\)', '', body)
     # a code group after ';' or ',' and before ':' (a ',' here is a slip for ';')
-    for grp in re.findall(r'(?:^|[;,])\s*(?:[a-z][a-z ]*:\s*)*((?:[A-Z]{2,7}(?:-[A-Z]{1,4})?\s*,\s*)*[A-Z]{2,7}(?:-[A-Z]{1,4})?)\s*:', flat):
+    for grp in re.findall(r'(?:^|[;,])\s*(?:[a-z][a-z ]*:\s*)*((?:' + C + r'\s*,\s*)*' + C + r')\s*:', flat):
         for c in grp.split(','):
             c = c.strip()
             if CODE.fullmatch(c) and c not in out:
@@ -57,7 +69,7 @@ def split(text):
     dep = f"{tier} type {'depositories' if len(codes) > 1 else 'depository'}: {', '.join(codes)}."
     spec = f"{tier} type {'specimens' if n_spec != 1 else 'specimen'}: {body}" + ('' if body.endswith('.)') else '.')
     note = ''
-    if re.search(r'\d,\s*[A-Z]{2,7}(?:-[A-Z]{1,4})?\s*:', body):
+    if re.search(r'\d,\s*' + C + r'\s*:', body):
         note = 'comma where a semicolon should separate depositories'
     new = text[:m.start()] + dep + ' ' + spec + (' ' if m.end() < len(text) else '') + text[m.end():].lstrip()
     return new.strip(), note
@@ -65,6 +77,9 @@ def split(text):
 
 def main():
     src, out = sys.argv[1], sys.argv[2]
+    if len(sys.argv) > 3:
+        inst = [json.loads(l) for l in open(sys.argv[3], encoding='utf-8') if l.strip()]
+        use_codes([i['abbreviation'] for i in inst if re.search(r'[a-z]', i.get('abbreviation') or '')])
     rows = []
     for l in open(src, encoding='utf-8'):
         if not l.strip():

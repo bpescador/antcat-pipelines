@@ -214,11 +214,18 @@ CODE_JULY = re.compile(r'\b([A-Z]{3,6}(?:[A-Z0-9]{0,3})?)\b')
 CODE_V2 = re.compile(r'\b([A-Z]{3,6}(?:[A-Z0-9]{0,3})?(?:-[A-Z]{1,3})?)(?![A-Za-z0-9-])')
 
 
+def literal_codes(codes):
+    """codes CODE_V2 cannot read, so they are matched literally: with a space ("NMNH NASU") or
+    with lower-case letters (INBio, CeNak, PMSPbU, Raffles; INBio found missed by the reviewer,
+    2026-11-02)"""
+    return [c for c in codes if ' ' in c or re.search(r'[a-z]', c)]
+
+
 class Extractor:
     def __init__(self, july, spaced_codes=()):
         self.code = CODE_JULY if july else CODE_V2
         self.dep_ac = DEP_AC if july else DEP_AC_V2
-        # longest first, so a longer spaced code wins over a shorter one inside it
+        # codes matched literally (spaced or mixed case); longest first, so a longer one wins over a shorter one inside it
         self.spaced = [] if july else sorted(set(spaced_codes), key=len, reverse=True)
 
     def codes(self, seg):
@@ -451,8 +458,7 @@ def main(argv=None):
     known = set(cls) | set(extra)
 
     # 3. codes
-    spaced = [c for c in cls if ' ' in c]
-    X = Extractor(a.july, spaced)
+    X = Extractor(a.july, literal_codes(cls))
     confirmed, rec_err = load_errata(a.errata) if a.errata else ({}, {})
     rows, rec_applied = [], 0
     for k in compare:
