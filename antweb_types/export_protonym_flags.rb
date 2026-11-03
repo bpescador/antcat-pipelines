@@ -5,7 +5,9 @@
 # another rank. Used by antweb_types/build_inserts.py --flags=...
 #
 # Run on the server inside the app container (runbook procedure 16):
-#   docker exec -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/export_protonym_flags.rb
+#   docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/export_protonym_flags.rb
+# Tested on antcat-staging 2026-11-03 (commit 9d35f7e): 24,376 of 24,376 written, 0 errors; 373 replacement
+# names, 491 with replacement-name history text, 314 nomina nuda, 1,396 all-unavailable, 1,215 quadrinomials.
 # Output (host): /var/www/antcat-2/tmp/protonym_flags.jsonl
 #
 # Fields (checked against calacademy-research/antcat at 90407c3d9, 2026-11-03):
@@ -22,6 +24,7 @@ require 'set'
 SPECIES_GROUP = %w[SpeciesName SubspeciesName InfrasubspeciesName].freeze
 OUT = Rails.root.join('tmp', 'protonym_flags.jsonl')
 FileUtils.mkdir_p(File.dirname(OUT))
+ActiveRecord::Base.logger = nil   # staging logs every SQL query at DEBUG; 300 KB of output on 2026-11-03
 
 scope = Protonym.joins(:name).where(names: { type: SPECIES_GROUP }).includes(:name, :taxa)
 total = scope.count

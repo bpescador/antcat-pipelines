@@ -536,7 +536,7 @@ route conflicts to review.
 - **`~/Downloads` is Dropbox** and rejects writes. Use `/tmp/` or `~/Desktop`.
 - **Paperclip cross-device link log lines** are harmless INFO noise.
 - Python scripts go in files and run under an interpreter; do not paste into zsh.
-- Rails runners: `docker exec -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/<script>`
+- Rails runners: `docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/<script>`
 
 ---
 
@@ -589,9 +589,11 @@ wrong — and this is the only way you will notice.
 All read-only. Write to `/var/www/antcat-2/tmp/` (host) = `/app/tmp/` (container). Run with:
 
 ```bash
-docker exec -w /app -e RAILS_ENV=production antcat-app \
+docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
   bundle exec rails runner tmp/<script>.rb
 ```
+
+`-u antcat`: since AntCat #1578 the app runs as user antcat; a runner started as the container default (root) can leave root-owned files the app cannot write (checked on antcat-staging 2026-11-03). The header comments of older runners still show the command without it; use this one.
 
 **Always print counts.** A runner that silently writes zero rows is the most expensive failure mode
 here — the `rescue` inside a `find_each` loop will swallow a wrong method name on every row and

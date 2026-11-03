@@ -52,9 +52,11 @@ runner will find it. (If the `antcat` SSH alias isn't recognised, use
 ## 2. Export the references (with nested containers) — [droplet]
 
 ```
-[droplet]  docker exec -w /app -e RAILS_ENV=production antcat-app \
+[droplet]  docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
                bundle exec rails runner /app/export_references.rb
 ```
+
+(`-u antcat`: since AntCat #1578 the app runs as user antcat; a runner started as the container default (root) can leave root-owned files the app cannot write (checked on antcat-staging 2026-11-03).)
 
 Read the **last two lines** it prints:
 
@@ -155,7 +157,7 @@ Always staging/sandbox first. Take a TW project SQL export before loading. No de
 
 ```
 [mac]      scp ~/antcat-tw/export_references.rb antcat:/var/www/antcat-2/     # only if changed
-[droplet]  docker exec -w /app -e RAILS_ENV=production antcat-app \
+[droplet]  docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
                bundle exec rails runner /app/export_references.rb            # check container count
 [mac]      scp antcat:/var/www/antcat-2/antcat_references.csv ~/antcat-tw/
 [mac]      scp antcat:/var/www/antcat-2/<newest-worldants> ~/antcat-tw/worldants.txt

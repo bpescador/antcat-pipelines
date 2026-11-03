@@ -36,7 +36,8 @@ Take the two exports on the same day.
 1. **AntCat protonyms.** On the droplet, copy `bolton/export_protonyms.rb` into
    `/var/www/antcat-2/tmp/` from a pinned commit. Record the commit and md5, as in CLAUDE.md
    rule 7. Run it with the runbook command:
-   `docker exec -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/export_protonyms.rb`.
+   `docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/export_protonyms.rb`.
+   Use `-u antcat`: the container's default user is root, and the app runs as antcat.
    This is read-only. Copy `tmp/protonyms_species_typeinfo.jsonl` to the Mac, then clear `tmp/`.
    - Ignore the "Server export" block in the June README: it copies into the code folder, which
      is no longer done.

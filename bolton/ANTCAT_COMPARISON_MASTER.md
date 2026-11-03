@@ -219,7 +219,7 @@ write verified in the live UI → ~10-row batch verified → full 563. Everythin
   17 (taxonomic history) — first line is the protonym as published (the original description).
   Reference id column is 100% populated.
 - **Droplet runner pattern:**
-  `docker exec -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/<script>`
+  `docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app bundle exec rails runner tmp/<script>`
 - **Output paths:** write to `/tmp/` — Brian's `~/Downloads` is a Dropbox CloudStorage path
   that rejects writes.
 - **Python scripts** are saved as files and run with the interpreter (not pasted into zsh).

@@ -13,7 +13,9 @@ Every command block states WHERE it runs. One machine per block, always.
 # WHERE: droplet (ssh antcat)
 curl -sO https://raw.githubusercontent.com/bpescador/antcat-pipelines/main/export_references.rb
 docker cp export_references.rb antcat-app:/app/
-docker exec -w /app -e RAILS_ENV=production antcat-app \
+# -u antcat: since AntCat #1578 the app runs as user antcat; a runner started as the container default (root) can leave root-owned files the app cannot write (checked on antcat-staging 2026-11-03).
+# If it cannot write /app/antcat_references.csv, that is the open item to move this output to tmp/.
+docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
     bundle exec rails runner /app/export_references.rb
 # expect: "Wrote NNNNN references"; nested-with-container should be ~1,245, never ~0
 ```

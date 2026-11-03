@@ -1,5 +1,17 @@
 # antcat-pipelines — changelog
 
+## 2026-11-03 -- Rails runners run as user antcat
+- Checked on antcat-staging: `docker exec antcat-app id` is root, while `/app/tmp` and
+  `/app/log` belong to antcat (the app runs as antcat since AntCat #1578, 18 Oct). A runner
+  started as root can leave root-owned files the app cannot write.
+- The runner command in WORKFLOW.md, TW_EXPORT_RUN_CHECKLIST.md, BOLTON_SYNC_RUNBOOK.md
+  (with the reason), ANTCAT_COMPARISON_MASTER.md and antweb_types/README.md now has `-u antcat`.
+  Header comments of older runners are left as they are, so their md5s stay the same.
+- export_protonym_flags.rb, tested on staging as antcat at 9d35f7e: 24,376 of 24,376 written,
+  0 errors; replacement names 373 (+491 by history text), nomina nuda 314, all-unavailable
+  1,396, quadrinomials 1,215. ActiveRecord logging is now off in the runner (staging printed
+  300 KB of SQL at DEBUG).
+
 ## 2026-11-03 -- antweb_types: AntCat's type-information conventions, depository check, split fields
 - build_inserts.py takes two optional inputs; without them the output equals the June output
   (selftest compares add_text):
