@@ -1,5 +1,21 @@
 # antcat-pipelines — changelog
 
+## 2026-11-03 -- antweb_types: AntCat's type-information conventions, depository check, split fields
+- build_inserts.py takes two optional inputs; without them the output equals the June output
+  (selftest compares add_text):
+  - `--flags=protonym_flags.jsonl` (new read-only runner `export_protonym_flags.rb`): rows for
+    protonyms AntCat gives no type information under (Bradley, 2026-10-30) go to
+    primary_adds_held.csv with a hold_reason: nomen nudum, replacement name (history item or
+    homonym link, checked against the AntCat schema at 90407c3d9), unavailable name, quadrinomial
+    to check.
+  - `--institutions=institutions.jsonl`: depository_check flags AntWeb ownedby values that are
+    not AntCat codes, and names the AntCat code behind an [Also]/[Formerly] alias.
+- New columns primary_add and secondary_add: the text for each AntCat field. A full block's
+  paratype text no longer has to be cut out of add_text by hand.
+- selftest.py: a second run with both options (holds, alias, non-code, split columns). Breaking
+  the replacement-name hold or the alias makes it fail.
+- The runner has been syntax-checked only. Run it on antcat-staging first.
+
 ## 2026-11-03 -- depository scripts read mixed-case codes (INBio)
 - The reviewer found INBio missed in the 2 Nov week (Temnothorax nebliselva): both scripts
   read codes as upper-case runs only. AntCat has four mixed-case codes: INBio, CeNak,

@@ -16,6 +16,7 @@ recovered on 2026-11-03.
 | `build_inserts.py` | `primary_adds.csv`: one row per protonym, with the text to add | turn 35 |
 | `AntCat-AntWeb_Type_Reconciliation_README.md` | the June method, rules and numbers, as last edited | turn 19, edited in turns 19, 21, 27, 29, 35 |
 | `selftest.py` | new: checks the June decisions on a small made-up fixture | 2026-11-03 |
+| `export_protonym_flags.rb` | new: read-only runner; per protonym, the facts the conventions need (name type, nomen nudum, replacement name, taxon statuses) | 2026-11-03 |
 | `june2026/` | one-off steps (validation checklist, coverage counts), verbatim, June paths | turns 37, 40, 48, 50 |
 
 **How the files were rebuilt.** Every `create_file`, `str_replace` and patch script in the chat
@@ -47,7 +48,10 @@ Take the two exports on the same day.
    - It is tab-separated. Some rows are not UTF-8; the matcher reads them with
      `errors='replace'`.
 3. `python3 antweb_types/reconcile_types.py protonyms_species_typeinfo.jsonl aw.tsv OUT/`
-4. `python3 antweb_types/build_inserts.py protonyms_species_typeinfo.jsonl aw.tsv OUT/type_link_queue.csv OUT/`
+4. `python3 antweb_types/build_inserts.py protonyms_species_typeinfo.jsonl aw.tsv OUT/type_link_queue.csv OUT/ --flags=protonym_flags.jsonl --institutions=institutions.jsonl`
+   - `protonym_flags.jsonl` comes from `antweb_types/export_protonym_flags.rb`, run like step 1. It is read-only.
+   - `institutions.jsonl` comes from `bolton/institutions_export.rb`.
+   - Without the two options the output is the June output.
 5. Before trusting a run after any code change, `python3 antweb_types/selftest.py` must print
    SELFTEST PASS. `smoke.sh` runs it too.
 
@@ -99,14 +103,17 @@ The 8,675 primary-type additions break down as:
 - **No write runner exists yet.** A write goes through the Protonym model as AntCatBot, with the
   staged gates in CLAUDE.md: snapshot, dry run, canary checked in the live UI, about 10 rows,
   then the rest. Primary types first.
-- **Full blocks need splitting.** A full block's `add_text` holds the secondary block in the same
-  string. On a write it goes into `secondary_type_information_taxt`, not the primary field.
-- **AntCat conventions found in the October depository work are not applied.** AntCat gives no
-  type information under replacement names, nomina nuda, or quadrinomials whose name was later
-  used at another rank. Filter these before any list reaches a reviewer. The export carries
-  `nomen_nudum`.
-- **Depositories.** A depository comes from AntWeb `ownedby`, which is sometimes a name, not a
-  code ("SMNS Stuttgart"). Check against antcat.org/institutions.
+- **Done 2026-11-03: primary and secondary text are split.** The `primary_add` and
+  `secondary_add` columns hold the text for `primary_type_information_taxt` and
+  `secondary_type_information_taxt`. `add_text` is kept as in June.
+- **Done 2026-11-03: AntCat's conventions are applied** when `--flags` is given. Protonyms with no
+  type information by convention go to `primary_adds_held.csv` with a `hold_reason`: nomina nuda,
+  replacement names, unavailable names, and quadrinomials to check.
+  - The runner `export_protonym_flags.rb` has been syntax-checked and its fields checked against
+    AntCat's schema. It has not yet been run on a server: run it on staging first.
+- **Done 2026-11-03: depositories are checked** when `--institutions` is given. `depository_check`
+  flags AntWeb `ownedby` values that are not AntCat codes, and names the AntCat code when an
+  `[Also]` note links them (AntWeb INBC = AntCat INBio).
 - **Material list.** `review_material_mismatch.csv` from June came from an inline step that was
   not kept. The same flag is the `material_flag` column of `primary_adds.csv`.
 - **Rerun first.** Rerun on fresh exports before any review. The June lists are five months
