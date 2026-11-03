@@ -19,6 +19,12 @@ genus-group names, status citations, type material. Runbook:
 `bolton/BOLTON_SYNC_RUNBOOK.md` (v2 — supersedes v1; lessons from the July
 2026 run in `bolton/CHANGELOG_ENTRY.md`).
 
+**AntWeb type specimens ⇄ AntCat protonyms** (`antweb_types/`). Finds AntWeb
+type specimens whose codes are missing from AntCat protonyms, routes them to
+the protonym, and drafts the text to add; lists rank, misplacement and name
+disagreements. Read-side only; no write runner yet. Built June 2026, recovered
+from the chat November 2026. Guide: `antweb_types/README.md`.
+
 ## One-off exports from the nightly dump
 
 `build_name_dictionary.py` builds a two-column dictionary of old species-group

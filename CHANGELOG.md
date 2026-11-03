@@ -1,5 +1,22 @@
 # antcat-pipelines — changelog
 
+## 2026-11-03 -- antweb_types/ (AntWeb type-specimen linker, recovered)
+- The June 2026 AntWeb ⇄ AntCat type linker existed only in the sandbox of the chat
+  "Automating type specimen linking between Antcat and Antweb" (7b114e80, 8 Jun 2026).
+  Rebuilt by replaying every create_file, str_replace and patch script in the order
+  it ran, each anchor asserted. No logic changes.
+- reconcile_types.py (matcher), build_inserts.py (primary_adds.csv), the June README
+  as last edited, and june2026/ one-offs (validation checklist, coverage counts) kept
+  verbatim with provenance headers.
+- New: antweb_types/selftest.py checks the June decisions on a made-up fixture
+  (spaced codes, rank swaps, connecting words and gender endings not fixes, spelling
+  vs current combination, misplacement, bare-holotype routing, no AntWeb locality,
+  material flag). Undoing the spaced-code fix or adding a locality makes it fail.
+  smoke.sh runs it and has two new tripwires.
+- antweb_types/README.md: provenance per file, run steps with current paths, June
+  final numbers (fix list 426, not the README's 772), and what must happen before
+  any write (write runner, split primary/secondary, Bradley's no-type-info cases).
+
 ## 2026-10-30 -- diff_depositories.py: genus-aware matching; record-specific errata
 - Found from the reviewer's returned week: July matched NGC to AntCat on (epithet,
   first author, year) and kept the FIRST record of each side, so two species sharing

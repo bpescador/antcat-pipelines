@@ -19,4 +19,8 @@ python3 -c "import bibtexparser as b; assert b.__version__.startswith('1.'), b._
 grep -q 'PDF|' export_antcat_names.py            || { echo "TRIPWIRE: PAGE_RE DOI/PDF fix missing from export_antcat_names.py"; fail=1; }
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
+grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
+grep -q "needs_locality='yes (from publication)'" antweb_types/build_inserts.py || { echo "TRIPWIRE: no-AntWeb-locality rule missing from antweb_types/build_inserts.py"; fail=1; }
+# behaviour check on a made-up fixture (stdlib only, temp folder): the June 2026 decisions
+python3 antweb_types/selftest.py | grep -q 'SELFTEST PASS' || { echo "SELFTEST FAIL: run python3 antweb_types/selftest.py"; fail=1; }
 [ $fail -eq 0 ] && echo "SMOKE PASS" || { echo "SMOKE FAIL -- do not commit"; exit 1; }
