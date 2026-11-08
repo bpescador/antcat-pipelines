@@ -17,6 +17,8 @@ recovered on 2026-11-03.
 | `AntCat-AntWeb_Type_Reconciliation_README.md` | the June method, rules and numbers, as last edited | turn 19, edited in turns 19, 21, 27, 29, 35 |
 | `selftest.py` | new: checks the June decisions on a small made-up fixture | 2026-11-03 |
 | `export_protonym_flags.rb` | new: read-only runner; per protonym, the facts the conventions need (name type, nomen nudum, replacement name, taxon statuses) | 2026-11-03 |
+| `refresh_typestatus_sheet.py` | new: brings the reviewer's type-status sheet up to date with a new run, keeping his answers | 2026-11-08 |
+| `typestatus_week.py` | new: builds his week (day CSVs + week.json for `bolton/review_week.py`) | 2026-11-08 |
 | `june2026/` | one-off steps (validation checklist, coverage counts), verbatim, June paths | turns 37, 40, 48, 50 |
 
 **How the files were rebuilt.** Every `create_file`, `str_replace` and patch script in the chat
@@ -55,6 +57,10 @@ Take the two exports on the same day.
    - Without the two options the output is the June output.
 5. Before trusting a run after any code change, `python3 antweb_types/selftest.py` must print
    SELFTEST PASS. `smoke.sh` runs it too.
+6. Reviewer's sheet: `python3 antweb_types/refresh_typestatus_sheet.py SHEET.xlsx OUT/ protonyms.jsonl protonym_flags.jsonl aw.tsv OUT/typestatus_merged.csv`
+7. NGC labels: `python3 bolton/ngc_labels.py protonyms_species_typeinfo.jsonl.gz OUT/ngc_labels_draft.csv`
+8. His week: `python3 antweb_types/typestatus_week.py --merged OUT/typestatus_merged.csv --adds OUT/primary_adds.csv --held OUT/primary_adds_held.csv --labels OUT/ngc_labels_draft.csv --protonyms protonyms.jsonl --out WEEK/`,
+   then `python3 bolton/review_week.py --spec WEEK/week.json --xlsx WEEK/week.xlsx`.
 
 ## June 2026 results (8 Jun exports)
 
@@ -80,6 +86,22 @@ The 8,675 primary-type additions break down as:
 - 1,071 append to an existing specimen line;
 - 438 add a depository line;
 - 208 full blocks.
+
+## 8 Nov 2026 results (8 Nov exports, after commits eca9815 and fdae8b9)
+
+| | |
+|---|---|
+| AntWeb type specimens | 36,594 |
+| already on AntCat | 10,453 |
+| not on AntCat | 25,983 (auto 22,297, ambiguous 7, no match 3,679) |
+| additions | 8,611 protonyms: specimen line 7,334, append 1,133, full block 126, depository line 18 |
+| held by convention | 104 (replacement name 68, by history text 17, nomen nudum and/or unavailable 19) |
+| material flags | 1,585 |
+| present_check (code already in AntCat) | 81 protonyms |
+| additions on records with NGC-style labels | 408: relabel those first (`bolton/ngc_labels.py`) |
+| misplacements / rank / AntWeb name fixes | 158 / 205 / 431 |
+
+June's "438 add a depository line" was mostly the NGC-label fault: those records already name a depository.
 
 ## Decisions settled with Brian in June (do not regress; `selftest.py` checks them)
 
@@ -117,5 +139,10 @@ The 8,675 primary-type additions break down as:
   `[Also]` note links them (AntWeb INBC = AntCat INBio).
 - **Material list.** `review_material_mismatch.csv` from June came from an inline step that was
   not kept. The same flag is the `material_flag` column of `primary_adds.csv`.
-- **Rerun first.** Rerun on fresh exports before any review. The June lists are five months
-  stale, and the depository work has since changed AntCat.
+- **Rerun first.** Rerun on fresh exports before any review. Done 2026-11-08 (above).
+- **Relabel before linking.** 408 additions sit on records with NGC-style labels. Agree the
+  wording with Bradley, relabel (AntCatBot, staged), rerun, then write the specimen codes.
+- **reconcile_types.py code regex** misses spellings like "USNM# 609605" and does not read type
+  notes; `present_check` in build_inserts.py catches these for now. The June rule is "match by
+  code, ignoring case and punctuation": widen the regex (with a selftest case) before the misplacement
+  and rank lists are trusted for such codes.
