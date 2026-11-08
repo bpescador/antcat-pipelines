@@ -21,6 +21,7 @@ Added 2026-11-03 (build_inserts.py --flags / --institutions, Bradley's conventio
   - primary and secondary text come in separate columns, one per AntCat field
 Added 2026-11-08:
   - an NGC-style "Type-depository:" counts as a depository (no second depository line)
+  - a code AntCat already has, written another way ("USNM# 609605"), is flagged in present_check
 """
 import csv, json, os, subprocess, sys, tempfile
 
@@ -57,6 +58,8 @@ PROTONYMS = [
          primary_type_taxt='Primary type material: holotype worker. Primary type depository: SMNK.'),
     dict(protonym_id=16, name='Acanthomyrmex careo', author='Moffett, M.W.', year=1986,
          primary_type_taxt='Type-material: holotype minor worker. Type-locality: Malaysia. Type-depository: BMNH.'),
+    dict(protonym_id=17, name='Pseudomyrmex saxulum', author='LaPolla, J.S.', year=2015,
+         primary_type_taxt='Primary type depository: USNM. Primary type specimen: USNM# 609605.'),
 ]
 FLAGS = [dict(protonym_id=12, name_type='SpeciesName', nomen_nudum=False, replacement_name=True,
               replacement_name_taxt=False, taxon_statuses=['valid']),
@@ -90,6 +93,7 @@ AW_ROWS = [
     ['inb0003000001', 'holotype of Pheidole costaricensis Longino, 2009', 'Pheidole', 'costaricensis', '', 'INBC', 'Costa Rica', 'X', 'major worker', ''],
     ['casent0900015', 'holotype of Lasius stutt Smith, 1952', 'Lasius', 'stutt', '', 'SMNS Stuttgart', 'Germany', 'X', 'worker', ''],
     ['casent0900016', 'holotype of Acanthomyrmex careo Moffett, 1986', 'Acanthomyrmex', 'careo', '', 'NHMUK', 'Malaysia', 'X', 'minor worker', ''],
+    ['usnm609605', 'holotype of Pseudomyrmex saxulum LaPolla, 2015', 'Pseudomyrmex', 'saxulum', '', 'USNM', 'USA', 'X', 'worker', ''],
 ]
 
 fails = []
@@ -136,7 +140,7 @@ def main():
     check(fx.get('casent0900007') == 'current_combination', 'Syscia tolteca not flagged as current_combination')
     check(('casent0005483', 'misplacement') in mm, 'alapa holotype under dolabra not flagged as misplacement')
     check(tier.get('casent0999999') == 'nomatch', 'unknown protonym not nomatch')
-    check(set(adds) == {'8', '9', '10', '11', '12', '13', '14', '15', '16'}, f'primary_adds protonyms {sorted(adds)} != 8 to 16 (June mode holds nothing)')
+    check(set(adds) == {'8', '9', '10', '11', '12', '13', '14', '15', '16', '17'}, f'primary_adds protonyms {sorted(adds)} != 8 to 17 (June mode holds nothing)')
     check(not june_held_file, 'June mode wrote a held file')
     a = adds.get('8', {})
     check(a.get('case') == 'full_block' and a.get('needs_locality', '').startswith('yes'), 'bare holotype not a full_block needing locality')
@@ -149,8 +153,10 @@ def main():
     check(adds.get('10', {}).get('add_text') == 'append to existing Primary type specimen line: , CASENT0900193', 'moloch append text wrong')
     check(adds.get('11', {}).get('add_text') == 'add lines: Primary type depository: IZAS. Primary type specimen: CASENT0900011.', 'nyos add_depository text wrong')
     check(adds.get('16', {}).get('case') == 'specimen_addline', 'NGC-style "Type-depository:" not seen: a second depository line would be added')
+    check(adds.get('17', {}).get('present_check') == 'already in AntCat, written "USNM# 609605"', f"USNM# 609605 not seen as present: {adds.get('17', {}).get('present_check')}")
+    check(all(adds[k].get('present_check', '') == '' for k in adds if k != '17'), 'present_check set on a code AntCat does not have')
     # 2026-11-03 options
-    check(set(adds2) == {'8', '9', '10', '11', '14', '15', '16'}, f'with --flags, primary_adds protonyms {sorted(adds2)} != 8 to 11, 14 to 16')
+    check(set(adds2) == {'8', '9', '10', '11', '14', '15', '16', '17'}, f'with --flags, primary_adds protonyms {sorted(adds2)} != 8 to 11, 14 to 17')
     check(held2.get('12', {}).get('hold_reason') == 'replacement name', 'replacement name not held')
     check(held2.get('13', {}).get('hold_reason') == 'nomen nudum; unavailable name', f"nomen nudum hold reason: {held2.get('13', {}).get('hold_reason')}")
     check(adds2.get('14', {}).get('depository_check') == 'AntWeb INBC = AntCat INBio ([Also] note)', 'INBC alias not resolved to INBio')

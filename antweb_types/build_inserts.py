@@ -17,6 +17,8 @@ Added 2026-11-03 (optional; without them the output is the June 2026 output):
                   note links them.
   Always: primary_add and secondary_add split add_text into the text for each field
   (primary_type_information_taxt, secondary_type_information_taxt).
+  Always (2026-11-08): present_check flags a code AntCat already has, written another way
+  ("USNM# 609605") or in type notes. Do not write those rows as drafted.
 
 Produces:
     primary_adds.csv — one row per protonym in the auto-primary backlog, with the exact ADD
@@ -80,6 +82,23 @@ def depository_check(deps):
         if d in ABBR: continue
         out.append(f"AntWeb {d} = AntCat {ALIAS[d]} ([Also] note)" if d in ALIAS else f"not an AntCat code: {d}")
     return '; '.join(out)
+
+def present_check(codes, p):
+    """2026-11-08. reconcile_types.py finds codes in AntCat text with one regex, which misses
+    spellings like "USNM# 609605" and does not read type notes. 139 of 22,297 auto rows on the
+    8 Nov exports were codes AntCat already has: 63 in type notes (cited there on purpose),
+    the rest written another way. Same letters and digits, up to 3 separators between them,
+    not inside a longer code."""
+    out = []
+    for fld, lab in (('primary_type_taxt', ''), ('secondary_type_taxt', 'secondary field'), ('type_notes_taxt', 'type notes')):
+        t = p.get(fld) or ''
+        for c in codes:
+            n = ncode(c)
+            if not n: continue
+            m = re.search(r'(?<![A-Za-z0-9])' + r'[^A-Za-z0-9]{0,3}'.join(re.escape(ch) for ch in n) + r'(?![A-Za-z0-9])', t, re.I)
+            if m:
+                out.append(f"already in AntCat{' ' + lab if lab else ''}, written \"{m.group(0)}\"")
+    return '; '.join(dict.fromkeys(out))
 
 PRIMARY={'holotype','lectotype','neotype','syntype','cotype','type'}
 SING={'holotype','lectotype','neotype'}
@@ -166,19 +185,21 @@ for pid in autoP:
                          f"Secondary type specimens: {scodes}.")
                 all_deps |= {s['dep'] for s in sspecs if s['dep']}
     prim_add = add
+    added = [s['code'] for s in pspecs] + ([s['code'] for s in sspecs] if sec_add else [])
     if sec_add: add += ' ' + sec_add
     rows.append(dict(protonym_id=pid, protonym=name,
         antcat_url=f"https://antcat.org/protonyms/{pid}", case=case,
         specimen_codes=pcodes, add_text=add, material_flag=mat_flag,
         needs_locality=needs_locality, antweb_urls=awurls,
         primary_add=prim_add, secondary_add=sec_add,
-        depository_check=depository_check(sorted(all_deps)), hold_reason=hold_reason(pid)))
+        depository_check=depository_check(sorted(all_deps)), hold_reason=hold_reason(pid),
+        present_check=present_check(added, prot.get(pid, {}))))
 
 rows.sort(key=lambda d:(d['case']!='specimen_append', d['case']!='specimen_addline',
                         bool(d['material_flag']), d['protonym']))
 COLS=['protonym_id','protonym','antcat_url','case',
       'specimen_codes','add_text','material_flag','needs_locality','antweb_urls']
-NEW=['primary_add','secondary_add','depository_check']
+NEW=['primary_add','secondary_add','depository_check','present_check']
 held=[d for d in rows if d['hold_reason']]; rows=[d for d in rows if not d['hold_reason']]
 with open(OUT+'primary_adds.csv','w',newline='') as f:
     w=csv.DictWriter(f, fieldnames=COLS+NEW, extrasaction='ignore')
@@ -195,3 +216,4 @@ for k,v in cc.items(): print(f"  {k:16} {v}")
 print(f"  material_flag set on {mf} (specimen still added; flagged for review)")
 if FLAGS: print(f"primary_adds_held.csv: {len(held)} protonyms held (no type information by AntCat convention, or to check)")
 if ABBR: print(f"  depository_check set on {sum(1 for d in rows if d['depository_check'])}")
+print(f"  present_check set on {sum(1 for d in rows if d['present_check'])} (code already in AntCat, written another way or in type notes)")
