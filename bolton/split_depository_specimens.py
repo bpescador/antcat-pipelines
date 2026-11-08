@@ -94,7 +94,8 @@ def main():
                              field=field, current=t, draft=new or '', problem=problem if not new else '', note=problem if new else '',
                              url=f"https://www.antcat.org/protonyms/{r['protonym_id']}"))
     with open(out, 'w', newline='', encoding='utf-8') as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
+        cols = ['protonym_id', 'name', 'author', 'year', 'field', 'current', 'draft', 'problem', 'note', 'url']
+        w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)   # header even when 0 fields remain (8 Nov export)
     bad = [r for r in rows if r['problem']]
     print(f"  notes: {sum(1 for r in rows if r['note'])}")
     print(f"wrote {out}: {len(rows)} fields, {len(bad)} without a draft")
