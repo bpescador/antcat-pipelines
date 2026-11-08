@@ -22,6 +22,11 @@ Canonical order of history lines on AntCat protonym pages, derived from producti
 | `small_kinds_survey.rb` | server | no | Sizes junior primary/secondary homonym, replacement name (both directions) and unavailable name lines; tags; the cross-page effect of Replacement name for trailers. |
 | `convert_small_kinds.rb` | server | MODE=write | Converts those kinds, one item per line, in two passes: KINDS=homonyms,replaced_by,unavailable first, then KINDS=replacement_for (its trailer is generated from the replaced name's structured homonym items and must show the same names, or the same names plus their citation). {prottac P} becomes {taxac T}, T the terminal taxon. |
 | `nested_in_citations.rb` | server | MODE=write | Rewrites "Author, in {ref P}: pages" as "{ref N}: pages" where exactly one nested reference under P has that author and the pages; lists the rest for an editor. |
+| `history_census2.rb` | server | no | Progress census for step 2: items by type, free-text lines by kind and rank group, protonyms with only structured, both, or only free-text history. |
+| `unavailable_infrasubspecific_survey.rb` | server | no | Shapes of the "As unavailable (infrasubspecific)" and "Declared as unavailable" lines. |
+| `convert_unavailable_infrasubspecific.rb` | server | MODE=write | Converts them to UnavailableInfrasubspecificName and DeclaredUnavailableInfrasubspecificName (AntCat #1597), same method as the status block. |
+| `remaining_kinds_survey.rb` | server | no | Shapes of the kinds with no structured type before AntCat #1598: misspelling, material referred, first available use, unidentifiable / incertae sedis, also described as new, emendation, unnecessary replacement name. |
+| `convert_six_kinds.rb` | server | MODE=write | Converts six of them (AntCat #1598): MisspelledAs, AlsoDescribedAsNew, FirstAvailableUseUnavailableInfrasubspecific, MaterialReferredTo, MaterialOfUnavailableNameReferredHere, IncertaeSedisIn. KINDS=misspelled,also,first_use,material_to,material_here,incertae. {prott}/{prottac} objects become the terminal taxon if the name shown is the same. |
 
 The Python scripts use fixed paths under `/tmp/ho/`; copy the export there first (`cp history_lines_<date>.tsv /tmp/ho/lines.tsv`).
 
@@ -46,3 +51,7 @@ Citations within one reference year keep the editors' order (Brian; AntCat #1593
 ## Small kinds (2026-11-08)
 
 Production: dump `antcat-manual-pre-small-kinds-20261108-1240`; pass 1 check a2d14d21, canary 5f499882 (154759, 154924), write 146e5347: 416 converted, 779 lines. Pass 2 check 70ecaaa6, write a77cf2e1: 319 converted (267 identical, 52 trailer citation added, Brian: "allow group A"); after comparing trailers as displayed, write 45760b8e: 30 more. Items now: JuniorPrimaryHomonymOf 244, JuniorSecondaryHomonymOf 125, HomonymReplacedBy 396, ReplacementNameFor 351, UnavailableName 18. 27 pages held for Bradley (`antcat__replacement_name_mismatches_for_bradley_20261108.xlsx`).
+
+## Six kinds (2026-11-08)
+
+Production: AntCat #1598 deployed (45f8e86), dump `antcat-manual-pre-six-kinds-20261108-1525`; check b469ceaf (3,021 lines, 0 errors), canary 3a75fdf6 (156505), write 45dd7926: 2,601 protonyms, 3,018 lines (misspelled 1,208, first use 531, incertae sedis 393, material referred to 374, material referred here 164, also described as new 348), 742 extra items, 265 held (nothing convertible), 0 errors. Emendation and Unnecessary replacement name skipped (Brian). Structured share after the run: 95.2% (196,824 structured, 9,823 free text).
