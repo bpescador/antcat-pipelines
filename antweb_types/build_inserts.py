@@ -134,8 +134,11 @@ for pid in autoP:
     pcodes=', '.join(s['code'].upper() for s in pspecs)
     pdeps=', '.join(sorted({s['dep'] for s in pspecs if s['dep']}))
     awurls=' '.join(f"https://www.antweb.org/specimen.do?name={s['code']}" for s in pspecs)
-    has_block=bool(cur.strip()); has_dep=bool(re.search(r'type deposit',cur,re.I))
-    has_spec=bool(re.search(r'type specimen',cur,re.I))
+    # [- ]: AntCat also has NGC-style labels ("Type-depository:", "Type-specimen:"), about
+    # 1,100 records on 2026-11-08. A space-only match sent 407 of them to add_depository,
+    # which would have added a second depository line (NHMUK beside BMNH).
+    has_block=bool(cur.strip()); has_dep=bool(re.search(r'type[- ]deposit',cur,re.I))
+    has_spec=bool(re.search(r'type[- ]specimen',cur,re.I))
 
     # material flag
     ack=ac_material_kind(cur); awk=kind_of(pspecs[0]['ts']); mat_flag=''
