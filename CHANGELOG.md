@@ -1,5 +1,30 @@
 # antcat-pipelines — changelog
 
+## 2026-11-08 -- antweb_types: run on the 8 Nov exports; two linker faults fixed; reviewer week tools
+- Inputs (same day): AntCat protonyms, institutions and flags (runners at 1de7a9f, run as antcat);
+  AntWeb dump antweb-all-specimens-2026-11-08.tsv.gz (911,246 rows, md5 39f2cdbf), after the
+  AntWeb project made the dump script read its credentials instead of holding a password.
+- reconcile_types.py: 36,594 AntWeb type specimens (June 36,108); 10,453 already on AntCat;
+  25,983 not (auto 22,297); 158 misplacements, 205 rank disagreements, 431 AntWeb name fixes.
+- build_inserts.py, two faults found (commits eca9815, fdae8b9):
+  - NGC-style labels ("Type-depository:") were not read as a depository: 407 of 425
+    add_depository rows would have added a second depository line. June's 438 had the same fault.
+    Now 18 add_depository rows.
+  - present_check: 139 codes on 81 protonyms are already in AntCat, in type notes or written
+    another way ("USNM# 609605"). reconcile_types.py's regex misses them.
+  - Result: 8,611 protonyms (specimen line 7,334, append 1,133, full block 126, depository 18),
+    104 held by convention, 1,585 material flags.
+- New, read only:
+  - bolton/ngc_labels.py: drafts AntCat labels for the 1,208 protonyms still using NGC labels
+    (Type-X -> Primary type X; Paratype-X -> Secondary type X); asserts only labels change.
+  - antweb_types/refresh_typestatus_sheet.py: brings a reviewer's type-status sheet up to date
+    with a new run, carrying his answers; marks resolved, open and new rows; groups misplacements;
+    shows patterns from AntCat's own data (replacement name, lectotype designated, syntypes in
+    AntCat) as evidence. Bradley's 430 rows: 73 resolved (62 by his TaxonWorks fixes reaching
+    AntWeb), 357 open, 6 new.
+  - antweb_types/typestatus_week.py: day CSVs and week.json for bolton/review_week.py.
+- bolton/review_week.py: optional "reference" tabs (shown, not timed) and "link_note".
+
 ## 2026-11-03 -- Rails runners run as user antcat
 - Checked on antcat-staging: `docker exec antcat-app id` is root, while `/app/tmp` and
   `/app/log` belong to antcat (the app runs as antcat since AntCat #1578, 18 Oct). A runner

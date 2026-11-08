@@ -15,7 +15,8 @@ week.json:
              "extra_minutes": 0, "what": ["line", ...],
              "columns": [["csv_field", "Header", width], ...],
              "inputs": [["Header", width, ["choice", ...] or null], ...],
-             "link": "csv_field holding a URL for the first column (optional)"}]}
+             "link": "csv_field holding a URL for the first column (optional)",
+             "reference": true  (optional: a tab shown for reference, not timed)}]}
 """
 import argparse, csv, json, math
 from openpyxl import Workbook
@@ -53,12 +54,14 @@ def main():
     lines.append(('The week', 'h2'))
     total = 0
     for d, rows in days:
+        if d.get('reference'):   # a reference tab (e.g. the whole list): shown, not timed
+            lines.append((f"{d['tab']}: {d['title']} ({len(rows)} rows)", '')); continue
         m = minutes(d, rows); total += m
         lines.append((f"{d['tab']}: {d['title']} ({len(rows)} items, about {hm(m)})", ''))
     lines.append((f"Total: about {hm(total)}.", ''))
     lines += [('', ''), ('How the estimates were made', 'h2')] + [(t, '') for t in spec.get('assumptions', [])]
     lines += [('', ''), ('What to fill in', 'h2'),
-              ('Only the yellow columns. Where a column has a list, pick from it. Each first-column number links to the record in AntCat.', ''),
+              ('Only the yellow columns. Where a column has a list, pick from it. ' + spec.get('link_note', 'Each first-column number links to the record in AntCat.'), ''),
               ('Each day is independent: finish a day before starting the next, and send the workbook back at the end of the week.', '')]
     for i, (t, kind) in enumerate(lines, 1):
         c = rd.cell(row=i, column=1, value=t)
@@ -68,15 +71,17 @@ def main():
 
     for d, rows in days:
         ws = wb.create_sheet(d['tab'])
-        head = [f"{d['title']} -- {len(rows)} items, about {hm(minutes(d, rows))}"] + d.get('what', [])
+        ref = d.get('reference')
+        head = [f"{d['title']} -- {len(rows)} " + ('rows' if ref else f"items, about {hm(minutes(d, rows))}")] + d.get('what', [])
         for i, t in enumerate(head, 1):
             c = ws.cell(row=i, column=1, value=t)
             c.font = Font(name=FONT, bold=(i == 1), size=11 if i == 1 else 10)
         # where the reviewer records the real time, so the next estimates are measured
         tr = len(head) + 1
-        c = ws.cell(row=tr, column=1, value='Your actual time for this day, in minutes:')
-        c.font = Font(name=FONT, bold=True, size=10)
-        c = ws.cell(row=tr, column=3); c.fill = YELLOW
+        if not ref:
+            c = ws.cell(row=tr, column=1, value='Your actual time for this day, in minutes:')
+            c.font = Font(name=FONT, bold=True, size=10)
+            c = ws.cell(row=tr, column=3); c.fill = YELLOW
         hr = len(head) + 3
         cols = d['columns']; ins = d.get('inputs', [])
         for j, (_, h, w) in enumerate(cols, 1):
