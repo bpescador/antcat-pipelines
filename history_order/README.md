@@ -19,6 +19,9 @@ Canonical order of history lines on AntCat protonym pages, derived from producti
 | `reference_dates_survey.rb` | server | no | Reference publication dates: precision, gaps, nested references, undated references cited in history. |
 | `convert_status_block.rb` | server | MODE=write | Converts the status block to StatusAsSpecies, JuniorSynonymOf, SeniorSynonymOf, SubspeciesOf (one item per citation). Predicts the page and keeps a protonym only if the converted page equals the prediction. Needs AntCat #1591 and #1593. KINDS, ONLY, LIMIT. One activity per protonym. |
 | `convert_forms_and_types.rb` | server | MODE=write | Same method for form descriptions (FormDescriptions) and single-citation lectotype/neotype designations (TypeSpecimenDesignation). |
+| `small_kinds_survey.rb` | server | no | Sizes junior primary/secondary homonym, replacement name (both directions) and unavailable name lines; tags; the cross-page effect of Replacement name for trailers. |
+| `convert_small_kinds.rb` | server | MODE=write | Converts those kinds, one item per line, in two passes: KINDS=homonyms,replaced_by,unavailable first, then KINDS=replacement_for (its trailer is generated from the replaced name's structured homonym items and must show the same names, or the same names plus their citation). {prottac P} becomes {taxac T}, T the terminal taxon. |
+| `nested_in_citations.rb` | server | MODE=write | Rewrites "Author, in {ref P}: pages" as "{ref N}: pages" where exactly one nested reference under P has that author and the pages; lists the rest for an editor. |
 
 The Python scripts use fixed paths under `/tmp/ho/`; copy the export there first (`cp history_lines_<date>.tsv /tmp/ho/lines.tsv`).
 
@@ -39,3 +42,7 @@ Species-group: 96.7% of pairwise observations agree with the order. 74 pages bro
 ## Same-year order and the status block (2026-11-07 and 08)
 
 Citations within one reference year keep the editors' order (Brian; AntCat #1593). Reference dates are often missing (1,868 of 13,043) or imprecise (YYYY, YYYYMM), so they cannot decide. Status block on production 2026-11-08: check 61cdd26e (18,165 identical, 837 full stop, 207 year order fixed, 240 held, 0 errors), canary 5697ad09, full run started 09:00. Runner notes: set `ActiveRecord::Base.logger = nil`; long runs with `setsid nohup ... &`; Ctrl-C does not stop `docker exec` without `-t` (kill the PID on the host).
+
+## Small kinds (2026-11-08)
+
+Production: dump `antcat-manual-pre-small-kinds-20261108-1240`; pass 1 check a2d14d21, canary 5f499882 (154759, 154924), write 146e5347: 416 converted, 779 lines. Pass 2 check 70ecaaa6, write a77cf2e1: 319 converted (267 identical, 52 trailer citation added, Brian: "allow group A"); after comparing trailers as displayed, write 45760b8e: 30 more. Items now: JuniorPrimaryHomonymOf 244, JuniorSecondaryHomonymOf 125, HomonymReplacedBy 396, ReplacementNameFor 351, UnavailableName 18. 27 pages held for Bradley (`antcat__replacement_name_mismatches_for_bradley_20261108.xlsx`).
