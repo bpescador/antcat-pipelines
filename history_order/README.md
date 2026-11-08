@@ -13,6 +13,12 @@ Canonical order of history lines on AntCat protonym pages, derived from producti
 | `history_order_derive.py` | Mac | no | Derives the order of kinds and its strength. Argument: `species-group`, `genus-group` or `family-group`. |
 | `history_order_fixes.py` | Mac | no | Splits order violations into script-fixable pages and pages for review. |
 | `reorder_history_by_kind.rb` | server | MODE=write | Reorders pages from `tmp/history_reorder_approved.tsv` with AntCat's own reorder operation. MODE=check by default; ONLY=protonym ids; REVERSE=1 rolls back with the same file. |
+| `status_block_survey.rb` | server | no | Sizes the free-text status block (Status as species, Junior/Senior synonym of, Subspecies of): formats, tags, date order, merge risk. |
+| `status_block_survey2.rb` | server | no | Subspecies of `{tax}` tags vs terminal taxa; year inversions vs same-year order. |
+| `status_block_survey3.rb` | server | no | Same-year citation pairs and reference dates (superseded: compares dates as numbers, which misorders mixed precision). |
+| `reference_dates_survey.rb` | server | no | Reference publication dates: precision, gaps, nested references, undated references cited in history. |
+| `convert_status_block.rb` | server | MODE=write | Converts the status block to StatusAsSpecies, JuniorSynonymOf, SeniorSynonymOf, SubspeciesOf (one item per citation). Predicts the page and keeps a protonym only if the converted page equals the prediction. Needs AntCat #1591 and #1593. KINDS, ONLY, LIMIT. One activity per protonym. |
+| `convert_forms_and_types.rb` | server | MODE=write | Same method for form descriptions (FormDescriptions) and single-citation lectotype/neotype designations (TypeSpecimenDesignation). |
 
 The Python scripts use fixed paths under `/tmp/ho/`; copy the export there first (`cp history_lines_<date>.tsv /tmp/ho/lines.tsv`).
 
@@ -29,3 +35,7 @@ Writes: dump the database first (the droplet snapshot does not cover the databas
 ## First run (2026-11-07)
 
 Species-group: 96.7% of pairwise observations agree with the order. 74 pages broke a strong rule: 47 reordered by script (request_uuid a7a77289-7905-4e5b-b4c0-10b172c8c5c9, canary c81fabc5-70e3-4525-8649-b189d2afcacb), 27 sent for manual review. Data stays out of git.
+
+## Same-year order and the status block (2026-11-07 and 08)
+
+Citations within one reference year keep the editors' order (Brian; AntCat #1593). Reference dates are often missing (1,868 of 13,043) or imprecise (YYYY, YYYYMM), so they cannot decide. Status block on production 2026-11-08: check 61cdd26e (18,165 identical, 837 full stop, 207 year order fixed, 240 held, 0 errors), canary 5697ad09, full run started 09:00. Runner notes: set `ActiveRecord::Base.logger = nil`; long runs with `setsid nohup ... &`; Ctrl-C does not stop `docker exec` without `-t` (kill the PID on the host).
