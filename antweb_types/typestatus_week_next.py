@@ -80,7 +80,11 @@ def main():
     d1 = [dict(ref='M016', kind='question from week 3', codes='FOCOL2754, FOCOL2755', n=2,
                antweb_says='syntype of Myrmecocystus cursor tancrei Forel, 1901', antcat_has='Formica aenescens (AntCat)',
                antcat_sentence='', antweb_named='Myrmecocystus cursor tancrei',
-               question='Your answer was "AntWeb", but your note says "They are correctly syntypes of Formica aenescens". Which is right?',
+               question=('Your answer was "AntWeb", but your note says "They are correctly syntypes of Formica aenescens". Which is right? '
+                         'Context: AntCat\'s Formica aenescens (160101) lists 9 primary specimens, and AntWeb gives every one as a syntype of '
+                         'a junior synonym: tancrei (CASENT0911107, FOCOL2754, FOCOL2755), hellenicus (CASENT0911108), rockingeri '
+                         '(CASENT0911109, FOCOL0551-0553) and caspius (CASENT0915624). Four are also on their own protonyms. FOCOL0551-0553 '
+                         'move to rockingeri now (your week 3 answer). Should the rest come off aenescens too, and its depositories with them?'),
                earlier='week 3, Day 4', url='https://www.antweb.org/specimen.do?name=focol2754', min=3)]
     for g, rows in groups.items():
         d, m = rows[0]
