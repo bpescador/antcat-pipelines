@@ -19,6 +19,7 @@ recovered on 2026-11-03.
 | `export_protonym_flags.rb` | new: read-only runner; per protonym, the facts the conventions need (name type, nomen nudum, replacement name, taxon statuses) | 2026-11-03 |
 | `refresh_typestatus_sheet.py` | new: brings the reviewer's type-status sheet up to date with a new run, keeping his answers | 2026-11-08 |
 | `typestatus_week.py` | new: builds his week (day CSVs + week.json for `bolton/review_week.py`) | 2026-11-08 |
+| `typestatus_corrections.py` | new: reviewed and rule-confirmed corrections, split by AntWeb source (TaxonWorks, upload group 76, other) | 2026-11-11 |
 | `june2026/` | one-off steps (validation checklist, coverage counts), verbatim, June paths | turns 37, 40, 48, 50 |
 
 **How the files were rebuilt.** Every `create_file`, `str_replace` and patch script in the chat

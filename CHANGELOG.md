@@ -1,5 +1,14 @@
 # antcat-pipelines — changelog
 
+## 2026-11-11 -- antweb_types/typestatus_corrections.py
+- New, read only: turns the refreshed type-status sheet plus a returned week workbook into
+  correction lists by the AntWeb record's source (TaxonWorks, upload group 76 = MZSP, other),
+  since a fix only sticks at the source. Listed: rows the reviewer answered "AntCat", and two
+  rules his week 3 samples confirmed (syntypes in AntCat, 10 of 10; paralectotype where AntCat
+  codes the lectotype, 7 of 10 with the 3 unsure excluded). Target is always the AntCat protonym,
+  with the TaxonWorks name key from antcat_names.tsv. Codes inside AntCat "X to Y" ranges with the
+  same AntWeb status are added. Week 3 result: TaxonWorks 131, group 76 129, other 3; 118 not listed.
+
 ## 2026-11-11 -- TaxonWorks sync fixes: original-description page; references export under Ruby 4.0
 - export_antcat_names.py: `original_page()` reads only the protonym's own citation (first year in
   the history text) and returns blank unless the token after its colon is arabic. It used to take
