@@ -7,6 +7,11 @@
   page fell through to a later citation: 21 names on the 11 Nov dump, all now blank (e.g. Myrmica
   reticulata 514828 had "5" from a 2026 lectotype designation). No other column or row changes;
   the 1,402 protonym citations with a DOI token are unchanged. smoke.sh checks nine cases.
+- export_antcat_names.py, same day: the citation's DOI may be written as a link ("https://doi.org/...",
+  "http://dx.doi.org/...", "doi: ..."); the parser now steps over these as over a bare DOI. 76 names
+  go from blank to their real page (5 to 668), each checked as the number after the link's colon; no
+  other row or column changes. Myrmoteras yamanei stays blank (a space inside its DOI in AntCat).
+  smoke.sh: four more cases.
 - export_references.rb: `require 'csv'` falls back to Ruby's bundled csv gem (newest version under
   Gem.default_dir) when bundler hides it, as on AntCat with Ruby 4.0; aborts with a message if no
   copy exists. Writes to /app/tmp first and copies over the CSV at the end (a copy, not a rename, so no

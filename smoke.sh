@@ -31,6 +31,10 @@ cases = {
  'Formica lignitum Germar, 1837 : pl. 19, fig. 19 (q.). Combination in Camponotus: Mayr, 1867b : 51.': '',
  'Formica rubripes Drury, 1770 : - Formica rubripes sensu Roger, 1863b : 2': '',
  'Formica z Smith, 1858 (w.) USA. Lectotype designation: Jones, 1990 : 12.': '',
+ 'Gnamptogenys piei Dias & Lattke, 2019 https://doi.org/10.1016/j.rbe.2018.10.002 : 31, fig. 1 (w.)': '31',
+ 'Cataglyphis bazoftensis Khalili-Moghadam et al., 2021 doi: 10.3897/zookeys.1009.59205 : 6, figs. 1-8': '6',
+ 'Formica w Smith, 2015 http://dx.doi.org/10.1234/x.5 : 77 (w.)': '77',
+ 'Formica v Smith, 2015 doi.org/10.1234/x.5 (w.) USA. Lectotype designation: Jones, 2020 : 12.': '',
 }
 bad = {t[:40]: (P(t), want) for t, want in cases.items() if P(t) != want}
 assert not bad, bad

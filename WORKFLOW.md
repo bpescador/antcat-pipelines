@@ -124,8 +124,12 @@ Tom re-resolves it on the target instance via `antcat_reference_id` (stable).
   "Seifert, 2026b ... : 5"; "260" in August). On the 11 Nov dump 174 names have a blank
   page: 78 roman, 7 plate only, 12 other non-numbers ("no. 1651", "named in fig. 1",
   "in supplementary"), 77 with no colon straight after the year. The 77 are protonyms
-  whose DOI is written as a URL ("https://doi.org/10...", "doi: 10...") before the colon;
-  their real page is not read yet (open).
+  whose DOI is written as a link ("https://doi.org/10...", "doi: 10...") before the colon.
+  **Recovered the same day** (agreed by Brian and the TaxonWorks project: it only fills
+  blanks): the parser now steps over DOI links too, and 76 get their page
+  (`page_changes_doiurl_20261111.tsv`). The one left, Myrmoteras yamanei, has a space inside
+  its DOI in AntCat ("10.15298/ invertzool..."), to fix in AntCat. Blank pages on the
+  11 Nov dump after both fixes: 98.
 - The 4 new 2026 references (144722/144727/144729/144732) load as Sources but
   have no citation rows until their names exist in TW.
 - PAGE_RE history: pre-Aug-2026 exports leaked DOI prefixes (`10`) into pages.
@@ -145,8 +149,9 @@ Google Drive for offsite.
   49 new references and 42 new names since 2026-08-14. Two fixes found in this cycle:
   `export_references.rb` failed under Ruby 4.0 (`csv` LoadError; run once with a load-path
   workaround, now in the script) and `original_page()` took pages from later citations
-  (21 names now blank, listed in `page_changes_20261111.tsv`). Build the handoff
-  `antcat_names.tsv` with the fixed code.
+  (21 names now blank, listed in `page_changes_20261111.tsv`); and DOI links before the
+  page hid 76 real pages (now read; `page_changes_doiurl_20261111.tsv`). Build the handoff
+  `antcat_names.tsv` with the fixed code: reference_pages parsed 23,044.
 
 - **2026-08-14** — production set built and verified in an AntCat-project
   session: 12,994 references / 23,100 names / 20,781 triples; join 100.00%;

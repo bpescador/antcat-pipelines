@@ -82,7 +82,9 @@ GENUS_TOK = re.compile(r'^\s*([A-Z][a-z\u00C0-\u024F]+)')
 # otherwise blank (roman, unpaginated, or no colon). Nothing later in the line is used.
 YEAR_RE = re.compile(r'\b(?:1[6789]\d\d|20\d\d)[a-z]?\b')   # year (+ optional letter)
 PAGE_RE = re.compile(
-    r'(?:\s*(?:PDF|\d+\.\S+))*'           # optional PDF link text / DOI token, any order
+    r'(?:\s*(?:PDF|\d+\.\S+'              # optional PDF link text / DOI token, any order;
+    r'|(?:https?://)?(?:dx\.)?doi\.org/\S+'  # also a DOI written as a link (2026-11-11:
+    r'|(?i:doi):\s*\S+))*'                #   76 recent protonyms, e.g. "2019 https://doi.org/10.1016/... : 31")
     r'\s*:\s*'                            # the colon before the page
     r'([^\s,;()]*)'                       # the page token, whatever it is
 )
