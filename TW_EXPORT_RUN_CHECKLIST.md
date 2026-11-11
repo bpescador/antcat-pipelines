@@ -66,6 +66,12 @@ Read the **last two lines** it prints:
 **If the container count is near zero, STOP** — the association didn't resolve, and the
 `.bib` would have empty containers. Don't proceed; send the output to me.
 
+Then check the file is today's before copying it (a failed run leaves the old file in place):
+
+```
+[droplet]  date; ls -l --time-style=long-iso /var/www/antcat-2/antcat_references.csv
+```
+
 This only reads the database and writes one CSV. No data is changed.
 
 ---

@@ -18,7 +18,15 @@ docker cp export_references.rb antcat-app:/app/
 docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
     bundle exec rails runner /app/export_references.rb
 # expect: "Wrote NNNNN references"; nested-with-container should be ~1,245, never ~0
+# Before copying: the CSV's date must be today. A failed export leaves the previous
+# cycle's file in place, and the scp below would copy stale data without complaint.
+date; ls -l --time-style=long-iso /var/www/antcat-2/antcat_references.csv
 ```
+
+Ruby 4.0 (AntCat since Oct 2026): `csv` is no longer a default gem and is not in AntCat's
+Gemfile. `export_references.rb` puts Ruby's own copy on the load path itself (2026-11-11), so
+the command above needs no workaround. It writes `antcat_references.csv.tmp` and renames it
+only when the export finishes.
 
 ```bash
 # WHERE: Mac Terminal
@@ -105,6 +113,16 @@ Tom re-resolves it on the target instance via `antcat_reference_id` (stable).
   canonical for this cycle; the script is the method for the next.
 - Roman-numeral pages (`civ`) and unpaginated supplements are **blank by
   design** — 5 such rows; AntCat prose carries the values.
+  **2026-11-11:** `original_page()` now reads only the protonym's own citation (the first
+  year in the history text) and returns blank unless the token after its colon is an
+  arabic number. Before, when that token was roman, a plate ("pl. 19") or missing, it took
+  the first year-colon-number later in the first 200 characters, usually a lectotype
+  designation: 21 wrong pages in the 11 Nov dump (Myrmica reticulata got "5" from
+  "Seifert, 2026b ... : 5"; "260" in August). On the 11 Nov dump 174 names have a blank
+  page: 78 roman, 7 plate only, 12 other non-numbers ("no. 1651", "named in fig. 1",
+  "in supplementary"), 77 with no colon straight after the year. The 77 are protonyms
+  whose DOI is written as a URL ("https://doi.org/10...", "doi: 10...") before the colon;
+  their real page is not read yet (open).
 - The 4 new 2026 references (144722/144727/144729/144732) load as Sources but
   have no citation rows until their names exist in TW.
 - PAGE_RE history: pre-Aug-2026 exports leaked DOI prefixes (`10`) into pages.
@@ -119,6 +137,13 @@ verify: `shasum -a 256 -c MANIFEST.sha256`). Snapshot zips are copied to
 Google Drive for offsite.
 
 ## History
+
+- **2026-11-11** — 13,043 references / 23,142 names; join 100.00%; BibTeX PASS;
+  49 new references and 42 new names since 2026-08-14. Two fixes found in this cycle:
+  `export_references.rb` failed under Ruby 4.0 (`csv` LoadError; run once with a load-path
+  workaround, now in the script) and `original_page()` took pages from later citations
+  (21 names now blank, listed in `page_changes_20261111.tsv`). Build the handoff
+  `antcat_names.tsv` with the fixed code.
 
 - **2026-08-14** — production set built and verified in an AntCat-project
   session: 12,994 references / 23,100 names / 20,781 triples; join 100.00%;
