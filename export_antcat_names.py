@@ -72,16 +72,33 @@ GENUS_TOK = re.compile(r'^\s*([A-Z][a-z\u00C0-\u024F]+)')
 # link text, then a colon, then the page. Requiring the colon stops a DOI's leading
 # "10" from being taken as the page (bug found in the TaxonWorks sync, Aug 2026);
 # (?:PDF|DOI)* keeps the common "year PDF: page" form parsing, in either token order.
+#
+# 2026-11-11: anchored on the protonym's OWN citation (the first year in the text).
+# The old search took the first year-colon-number anywhere in the first 200 characters,
+# so when the protonym's page was roman ("Stärcke, 1942d : xxv") or missing, it fell
+# through to a later citation in the type information: Myrmica reticulata (514828) got
+# "5" from "(by designation of Seifert, 2026b 10.25674/526 : 5)", and "260" in August.
+# Now: the token after the protonym's colon is the page if it is an arabic number,
+# otherwise blank (roman, unpaginated, or no colon). Nothing later in the line is used.
+YEAR_RE = re.compile(r'\b(?:1[6789]\d\d|20\d\d)[a-z]?\b')   # year (+ optional letter)
 PAGE_RE = re.compile(
-    r'\b(?:1[6789]\d\d|20\d\d)[a-z]?\b'   # year (+ optional disambiguation letter)
     r'(?:\s*(?:PDF|\d+\.\S+))*'           # optional PDF link text / DOI token, any order
     r'\s*:\s*'                            # the colon before the page
-    r'(\d+)(?!\.\d)'                      # page number, not followed by .digit (DOI-shaped)
+    r'([^\s,;()]*)'                       # the page token, whatever it is
 )
+ARABIC_RE = re.compile(r'(\d+)(?!\.\d)')  # page number, not followed by .digit (DOI-shaped)
+
+
+def page_token(history_text):
+    """the token after the colon of the protonym's own citation ('' if no colon)"""
+    t = strip_html(history_text)[:200]
+    y = YEAR_RE.search(t)
+    m = PAGE_RE.match(t, y.end()) if y else None
+    return m.group(1) if m else ''
 
 
 def original_page(history_text):
-    m = PAGE_RE.search(strip_html(history_text)[:200])
+    m = ARABIC_RE.match(page_token(history_text))
     return m.group(1) if m else ''
 
 

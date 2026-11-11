@@ -17,6 +17,24 @@ python3 -c "import bibtexparser as b; assert b.__version__.startswith('1.'), b._
   || echo "WARN: bibtexparser v1 not importable here -- pip install -r requirements.txt before Stage 2 (not a commit blocker)"
 # regression tripwires -- each grep must hit or a hard-won fix has been lost
 grep -q 'PDF|' export_antcat_names.py            || { echo "TRIPWIRE: PAGE_RE DOI/PDF fix missing from export_antcat_names.py"; fail=1; }
+# original-description page (2026-11-11): only the protonym's own citation counts; roman,
+# plate-only and unpaginated pages are blank, never a number taken from a later citation
+PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: original_page() regression in export_antcat_names.py"; fail=1; }
+from export_antcat_names import original_page as P
+cases = {
+ 'Myrmica rolandi var. reticulata Stärcke, 1942d : xxv (w.q.m.) FRANCE. Primary type material: lectotype worker (by designation of Seifert, 2026b 10.25674/526 : 5).': '',
+ 'Myrmica reticulata Smith, 1862b : 33 (w.) PANAMA.': '33',
+ 'Acanthomyrmex malikuli Jaitrong & Asanok, 2019 10.3897/zookeys.842.33609 : 116, figs. 1-3': '116',
+ 'Messor obscurior Sharaf, 2018 10.1080/09397140.2018.1442301 : 10 (s.) IRAQ.': '10',
+ 'Formica x Smith, 1858 PDF: 45 (w.)': '45',
+ 'Formica y Smith, 1858 10.1234/abc.1 PDF : 7 (w.)': '7',
+ 'Formica lignitum Germar, 1837 : pl. 19, fig. 19 (q.). Combination in Camponotus: Mayr, 1867b : 51.': '',
+ 'Formica rubripes Drury, 1770 : - Formica rubripes sensu Roger, 1863b : 2': '',
+ 'Formica z Smith, 1858 (w.) USA. Lectotype designation: Jones, 1990 : 12.': '',
+}
+bad = {t[:40]: (P(t), want) for t, want in cases.items() if P(t) != want}
+assert not bad, bad
+PY
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
 grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
