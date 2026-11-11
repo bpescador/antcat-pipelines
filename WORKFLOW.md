@@ -17,7 +17,10 @@ docker cp export_references.rb antcat-app:/app/
 # If it cannot write /app/antcat_references.csv, that is the open item to move this output to tmp/.
 docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
     bundle exec rails runner /app/export_references.rb
-# expect: "Wrote NNNNN references"; nested-with-container should be ~1,245, never ~0
+# expect: "Wrote NNNNN references ... (csv 3.x)"; nested-with-container should be ~1,245, never ~0
+# A warning "csv used to be loaded from the standard library ... since Ruby 3.4.0" comes first:
+# harmless (Bundler, before the script loads Ruby's own csv). Tested on antcat-prod 2026-11-11:
+# 13,043 references, 1,248 nested, csv 3.3.5.
 # Before copying: the CSV's date must be today. A failed export leaves the previous
 # cycle's file in place, and the scp below would copy stale data without complaint.
 date; ls -l --time-style=long-iso /var/www/antcat-2/antcat_references.csv
