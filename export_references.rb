@@ -35,8 +35,11 @@ rescue LoadError
 end
 
 OUT = '/app/antcat_references.csv'
-TMP = "#{OUT}.tmp"   # written first, renamed at the end: a run that fails part-way never
-                     # leaves a partial file under the real name with today's date
+# Written first to Rails' tmp/ (owned by the app user since AntCat #1578) and copied over OUT
+# only when the export has finished: a run that fails part-way never leaves a partial file
+# under the real name with today's date. A copy, not a rename, so the app user needs no write
+# permission on /app itself, only on the CSV, exactly as before.
+TMP = Rails.root.join('tmp', 'antcat_references.csv.tmp').to_s
 
 def safe(obj, *methods)
   return '' if obj.nil?
@@ -101,7 +104,8 @@ CSV.open(TMP, 'w') do |csv|
     count += 1
   end
 end
-File.rename(TMP, OUT)
+FileUtils.cp(TMP, OUT)
+File.delete(TMP)
 
 puts "Wrote #{count} references to #{OUT} (csv #{CSV::VERSION})"
 puts "  nested references with a resolved container: #{nested_with_container}"

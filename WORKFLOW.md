@@ -25,8 +25,8 @@ date; ls -l --time-style=long-iso /var/www/antcat-2/antcat_references.csv
 
 Ruby 4.0 (AntCat since Oct 2026): `csv` is no longer a default gem and is not in AntCat's
 Gemfile. `export_references.rb` puts Ruby's own copy on the load path itself (2026-11-11), so
-the command above needs no workaround. It writes `antcat_references.csv.tmp` and renames it
-only when the export finishes.
+the command above needs no workaround. It writes to `/app/tmp/antcat_references.csv.tmp` first
+and copies it over the CSV only when the export has finished.
 
 ```bash
 # WHERE: Mac Terminal

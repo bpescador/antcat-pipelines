@@ -9,8 +9,8 @@
   the 1,402 protonym citations with a DOI token are unchanged. smoke.sh checks nine cases.
 - export_references.rb: `require 'csv'` falls back to Ruby's bundled csv gem (newest version under
   Gem.default_dir) when bundler hides it, as on AntCat with Ruby 4.0; aborts with a message if no
-  copy exists. Writes to a .tmp file and renames at the end, so a failed run cannot leave a partial
-  CSV under the real name.
+  copy exists. Writes to /app/tmp first and copies over the CSV at the end (a copy, not a rename, so no
+  write permission on /app is needed), so a failed run cannot leave a partial CSV under the real name.
 - WORKFLOW.md / TW_EXPORT_RUN_CHECKLIST.md: check the CSV's date before copying; 2026-11-11 history.
 
 ## 2026-11-08 -- antweb_types: run on the 8 Nov exports; two linker faults fixed; reviewer week tools
