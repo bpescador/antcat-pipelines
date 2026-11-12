@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""
+propose_part_of_speech.py -- Phase 1 of the gender-agreement plan: scripted part-of-speech proposals
+for AntCat species-group protonyms whose current spelling differs from the original. Read only:
+writes a proposals TSV and a summary; nothing goes to AntCat until the proposals are reviewed.
+
+Why: TaxonWorks computes current spellings from the protonym's part of speech and the genus gender.
+Without part of speech in AntCat, TW's spellings drift from AntCat's (trochis/troche, Nov 2026).
+Plan: claude/GENDER_AGREEMENT_PLAN.md, Phase 1 (rules below, in order).
+
+  1 original ends -i, -ae, -orum, -arum      noun_in_genitive_case   high    changed spelling: probable error
+  2 -ensis/-iensis, current -ensis or -ense   adjective               high
+  3 other -is or -e                           manual                  none    the trochis trap: noun or adjective
+  4 -us -a -um -er -ra -rum -ior -ius, and the current spelling is one of the three predicted forms
+                                              adjective               medium  sample-check against originals
+  5 current spelling matches no predicted form: not a pure gender change (emendation, misspelling,
+    irregular adjective); listed, no proposal
+
+predict_three_forms is ported from TaxonWorks (lib/utilities/nomenclature.rb, SpeciesFileGroup/taxonworks,
+development branch checked 2026-09-24), without its table of irregular adjectives.
+
+Input:  --names antcat_names.tsv (export_antcat_names.py: original_epithet, spelling_differs)
+        --genus-gender genus_gender.tsv (optional; gender/gender_baseline.rb): rule 4 rows whose current
+          ending disagrees with the current genus's gender are noted (Strumigenys calvus, Nov 2026)
+Output: --out folder: part_of_speech_proposals.tsv, summary.txt
+"""
+import argparse, collections, csv, os, re, sys
+
+csv.field_size_limit(sys.maxsize)
+
+
+def predict_three_forms(name):
+    """-> (masculine, feminine, neuter), as TaxonWorks' Utilities::Nomenclature.predict_three_forms"""
+    n = name
+    if re.search(r'color(is)?$', n):
+        return (n, n, n)
+    if n.endswith('is'):
+        return (n, n, n[:-2] + 'e')
+    if n.endswith('e'):
+        return (n[:-1] + 'is', n[:-1] + 'is', n)
+    if n.endswith('us'):
+        return (n, n[:-2] + 'a', n[:-2] + 'um')
+    if n in ('niger', 'integer'):
+        return (n, n[:-2] + 'ra', n[:-2] + 'rum')
+    if re.search(r'(fer|ger)$', n):
+        return (n, n + 'a', n + 'um')
+    if n.endswith('er'):
+        return (n, n[:-2] + 'ra', n[:-2] + 'rum')
+    m = re.search(r'(fer|ger)(um|a)$', n)
+    if m:
+        b = n[:m.end(1)]
+        return (b, b + 'a', b + 'um')
+    m = re.search(r'([bfg])r(um|a)$', n)
+    if m:
+        b = n[:m.start(1) + 1]
+        return (b + 'er', b + 'ra', b + 'rum')
+    if n.endswith('um') or n.endswith('a'):
+        b = n[:-2] if n.endswith('um') else n[:-1]
+        return (b + 'us', b + 'a', b + 'um')
+    if re.search(r'(nor|ior|jor)$', n):
+        return (n, n, n[:-2] + 'us')
+    return (n, n, n)
+
+
+def classify(orig, cur, gender=''):
+    forms = predict_three_forms(orig)
+    if re.search(r'(i|ae|orum|arum)$', orig):
+        note = ('genitive noun: the change is not a gender change (emendation, misspelling or error): check'
+                if cur != orig else '')
+        return 1, 'noun_in_genitive_case', 'high', note
+    if re.search(r'i?ensis$', orig) and re.search(r'i?ens(is|e)$', cur):
+        return 2, 'adjective', 'high', ''
+    if re.search(r'(is|e)$', orig):
+        return 3, 'manual', 'none', 'noun or adjective: check the etymology'
+    if re.search(r'(us|a|um|er|ra|rum|ior|ius)$', orig) and cur in forms:
+        want = dict(zip(('masculine', 'feminine', 'neuter'), forms)).get(gender)
+        if want and cur != want:
+            return 4, 'adjective', 'medium', f'ending disagrees with the {gender} genus: expected {want}'
+        return 4, 'adjective', 'medium', '' if gender else 'genus gender not given'
+    if cur not in forms:
+        return 5, '', 'n/a', 'current spelling is none of the predicted forms ' + '/'.join(forms)
+    return 0, '', 'n/a', 'no rule'
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
+    ap.add_argument('--names', required=True)
+    ap.add_argument('--out', required=True)
+    ap.add_argument('--genus-gender')
+    a = ap.parse_args()
+    gender = {}
+    if a.genus_gender:
+        for g in csv.DictReader(open(a.genus_gender, encoding='utf-8'), delimiter='\t'):
+            if g['rank'] == 'Genus' and g['gender']:
+                gender.setdefault(g['name'], set()).add(g['gender'])
+        gender = {k: v.pop() for k, v in gender.items() if len(v) == 1}   # homonymous genera: skip
+    os.makedirs(a.out, exist_ok=True)
+    rows = [r for r in csv.DictReader(open(a.names, encoding='utf-8'), delimiter='\t')
+            if r['spelling_differs'] == 'TRUE']
+    out, stats = [], collections.Counter()
+    for r in rows:
+        orig = r['original_epithet'].strip().lower()
+        cur = (r['subspecies'] or r['species']).strip().lower()
+        rule, pos, conf, note = classify(orig, cur, gender.get(r['genus'], ''))
+        stats[(rule, pos or '-', r['status'])] += 1
+        out.append(dict(antcat_id=r['antcat_id'], current_name=r['scientific_name'], status=r['status'],
+                        original_combination=r['original_combination'], original_epithet=orig,
+                        current_epithet=cur, forms='/'.join(predict_three_forms(orig)), rule=rule,
+                        proposed_part_of_speech=pos, confidence=conf, note=note))
+    out.sort(key=lambda d: (d['rule'], d['current_name']))
+    with open(os.path.join(a.out, 'part_of_speech_proposals.tsv'), 'w', newline='', encoding='utf-8') as f:
+        w = csv.DictWriter(f, fieldnames=list(out[0].keys()), delimiter='\t', lineterminator='\n')
+        w.writeheader()
+        w.writerows(out)
+    by_rule = collections.Counter(d['rule'] for d in out)
+    valid = collections.Counter(d['rule'] for d in out if d['status'] == 'valid')
+    names = {1: 'genitive noun', 2: '-ensis adjective', 3: 'manual (-is/-e)', 4: 'adjective (-us/-a/-um...)',
+             5: 'not a pure gender change', 0: 'no rule'}
+    lines = [f'protonyms with a changed spelling: {len(out)} (valid {sum(valid.values())})'] + \
+            [f'  rule {k} {names[k]}: {by_rule[k]} (valid {valid[k]})' for k in sorted(by_rule)] + \
+            [f'  rule 4 endings that disagree with the genus gender: '
+             f'{sum(1 for d in out if d["note"].startswith("ending disagrees"))}']
+    open(os.path.join(a.out, 'summary.txt'), 'w').write('\n'.join(lines) + '\n')
+    print('\n'.join(lines))
+
+
+if __name__ == '__main__':
+    main()

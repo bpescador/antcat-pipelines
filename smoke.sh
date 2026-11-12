@@ -54,6 +54,15 @@ rows = [
 r, _ = B(rows, ix, 6)
 assert r == {'1': '3', '2': '4'}, r
 PY
+# part of speech (2026-11-12): TW's three-form rule ported; the genus-gender check catches calvus
+PYTHONPATH=gender python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: gender/propose_part_of_speech.py rules regressed"; fail=1; }
+from propose_part_of_speech import predict_three_forms as F, classify as C
+assert F('crassispina') == ('crassispinus', 'crassispina', 'crassispinum')
+assert F('niger') == ('niger', 'nigra', 'nigrum') and F('trochis')[2] == 'troche'
+assert C('trochis', 'troche')[1] == 'manual'                 # the trochis trap goes to a person
+assert C('pomonae', 'pomone')[1] == 'noun_in_genitive_case'
+assert C('calva', 'calvus', 'feminine')[3].startswith('ending disagrees')
+PY
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
 grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
