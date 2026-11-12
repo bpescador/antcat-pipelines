@@ -122,10 +122,40 @@ python3 tw_status_diff.py --antcat tw_out_YYYYMMDD/antcat_names.tsv \
   --tw tw_production_protonyms_YYYY-MM-DD.tsv --out tw_status_YYYYMMDD
 ```
 
+Add `--worldants worldants.txt` (the dump the names file came from) so every row carries
+AntCat's own history lines (`antcat_evidence`) and a flag where AntCat's status and history
+disagree (`antcat_check`).
+
 Outputs `tw_status_differences.tsv`, `antcat_not_matched.tsv` and `summary.txt`. The join
 and the status rules are in the script's docstring. Differences in spelling or subgenus
 alone do not count. Read the summary's "matched" line first: AntCat names not matched
 should be a handful, each explained.
+
+Each row has an `action` and an `action_class` for the TaxonWorks skill `tw-update-name-status`:
+- `add`: nothing in TW is removed. Sandbox canary, 10 on production, then the rest.
+- `remove`: a TW relationship or classification is deleted. Deletion rule, every batch: a TW
+  project SQL export made after the last write and downloaded by Brian; Brian's yes in chat;
+  the row's `antcat_evidence` in the log; 5 rows as a canary; then the rest.
+- `review`: decided by hand.
+- Any row with `antcat_check` set: change nothing in TW; fix AntCat first.
+
+## The cycle (AntCat is the authority; TW is kept a copy of it)
+
+Decided by Brian 2026-11-12. After each monthly AntCat export, or after a large AntCat editing batch:
+
+1. AntCat exports (Stage 1) and the names file (Stage 2).
+2. The TW project makes a Protonym export while nothing else is writing.
+3. Stage 4 here, with `--worldants`.
+4. The TW project applies the `add` rows, then the `remove` rows and duplicate merges under the
+   deletion rule (`tw-update-name-status`).
+5. AntCat errors the cycle finds (`antcat_check`, evidence that contradicts a status, spellings) go
+   to Brian or Bradley and are fixed in AntCat; they reach TW with the next cycle.
+6. Repeat until the difference file is empty.
+
+Spellings in TW are computed from genus gender and the protonym's part of speech. Their state in
+AntCat: `gender/gender_baseline.rb` (read-only runner; lists genera without gender), and
+`gender/propose_part_of_speech.py` (proposals for the gender plan's Phase 1, from the names file and
+the runner's `genus_gender.tsv`).
 
 ## Known caveats — 2026-08 cycle
 

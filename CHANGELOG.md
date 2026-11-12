@@ -1,5 +1,12 @@
 # antcat-pipelines — changelog
 
+## 2026-11-12 -- the AntCat -> TaxonWorks cycle: action columns, deletion rule, gender tools
+- tw_status_diff.py (dc6792b): action, action_class (add | remove | review), tw_target_should_id,
+  antcat_evidence and antcat_check columns, for the TW skill tw-update-name-status.
+- gender/gender_baseline.rb and gender/propose_part_of_speech.py (d8b3d03): genus gender and part of
+  speech in AntCat, which TW needs to compute spellings.
+- WORKFLOW.md: Stage 4 action classes and deletion rule; the cycle.
+
 ## 2026-11-11 -- tw_status_diff.py; homonym replacement fix in export_antcat_names.py
 - tw_status_diff.py, new, read only, standard library: status differences between antcat_names.tsv
   and the TW project's Protonym export, name by name. Join: protonym key; current name + author +
