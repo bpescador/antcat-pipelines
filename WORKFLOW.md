@@ -179,8 +179,9 @@ Google Drive for offsite.
   Eridanomyrmini; 29 same-protonym placement updates; Lieberman et al. 2026 (17 names);
   the 131 type-status corrections. Per-record logs for the first four were lost when the
   browser tab reloaded; the TW Protonym export lists every name with its TW id.
-  Recount (Stage 4, retires July's 1,953): 23,135 of 23,142 names matched; 363 rows in
-  `tw_status_differences.tsv`. It found a fault in `export_antcat_names.py`: a homonym
+  Recount (Stage 4, retires July's 1,953): 23,135 of 23,142 names matched; 122 status or
+  target differences, 36 TW records missing a relationship, and 205 unidentifiable names that
+  TW holds as valid with UncertainPlacement (a vocabulary question). It found a fault in `export_antcat_names.py`: a homonym
   could take the replacement name of a same-epithet homonym in another genus (2 rows in the
   11 Nov file; fixed in 7f6453e).
 

@@ -6,7 +6,8 @@
   year for TW rows keyed on the current name; then the same with gender endings allowed; AntCat
   misspellings to TW [sic] records. Same-key homonyms are told apart by current name, then original
   combination. Targets are compared through the join, so spelling and subgenus differences do not
-  count. On the 11 Nov files: 23,135 of 23,142 names matched; 363 differences.
+  count. On the 11 Nov files: 23,135 of 23,142 names matched; 122 status or target differences,
+  36 TW record gaps, 205 unidentifiable names TW holds as valid with UncertainPlacement.
 - export_antcat_names.py (7f6453e): "Replacement name for X" resolved on epithet + author + year
   alone gave a homonym another genus's replacement when the same epithet, author and year occur in
   several genera. Now the genus the prose names decides. 2 rows change on the 11 Nov dump (Prolasius

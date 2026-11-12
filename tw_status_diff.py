@@ -24,7 +24,8 @@ Status, AntCat vocabulary -> what TW must show to agree
   homonym                   ReplacedHomonym, a Homonym relationship or the Homonym classification;
                             if both sides name the replacement, the same replacement
   unavailable               Iczn::Unavailable or NomenNudum
-  unidentifiable            NomenDubium
+  unidentifiable            NomenDubium (TW's UncertainPlacement on a valid name is reported
+                            apart, as vocabulary: it is how TW mostly records these)
   excluded from Formicidae  Unavailable::Excluded
   unavailable misspelling   Usage::Misspelling, same correct spelling
 Targets are compared through the join (TW id -> AntCat protonym), so spelling and subgenus
@@ -32,7 +33,8 @@ differences in the target's name do not count. A target TW has no match for is c
 genus and terminal epithet, allowing the gender endings.
 
 Outputs
-  tw_status_differences.tsv  the real differences, one row per name
+  tw_status_differences.tsv  the differences, one row per name, grouped in summary.txt into
+                             status or target differences, TW record gaps, and vocabulary
   antcat_not_matched.tsv     AntCat names with no TW Protonym under either join
   summary.txt                counts
 Read-only. Standard library only.
@@ -103,6 +105,7 @@ def tw_status(r):
         or 'Iczn::Available::Invalid::Homonym' in cls,
         replacement=replaced[0] if replaced else '',
         synonym=any(t.startswith(SYN) and t != REPLACED for t in types),
+        uncertain='Iczn::Validating::UncertainPlacement' in types,
         valid_id=r['valid_taxon_name_id'])
     if MISSPELLING in types or IOS in types:
         return 'spelling record', '', f
@@ -236,6 +239,8 @@ def main():
                 return ('' if same_target(ar, f['valid_id']) is not False else 'target differs'), f['valid_id']
         elif st == ast:
             return ('TW record conflict: ' + note if note.startswith('TW also') else ''), ''
+        elif ast == 'unidentifiable' and st == 'valid' and f['uncertain']:
+            return 'vocabulary: AntCat unidentifiable, TW valid with UncertainPlacement', ''
         tgt = f['replacement'] if st == 'homonym' else (f['valid_id'] if st != 'valid' else '')
         return f'status: AntCat {ast}, TW {st}', tgt
 
@@ -285,8 +290,15 @@ def main():
         f'AntCat names not matched: {len(unmatched)}  (antcat_not_matched.tsv)',
         f'TW Protonyms not matched: {len(tw_left)}  of which [sic] spelling records {spelling}',
         f'agree: {sum(agree.values())}  ' + ', '.join(f'{k} {v}' for k, v in agree.most_common()),
-        f'real differences: {len(out)}  (tw_status_differences.tsv)',
-    ] + [f'  {v:6d}  {k}' for k, v in kinds.most_common()]
+        f'rows in tw_status_differences.tsv: {len(out)}',
+    ]
+    groups = (('status or target differs', lambda k: k.startswith(('status:', 'target'))),
+              ('TW record gaps (the status agrees)', lambda k: k.startswith('TW')),
+              ('vocabulary, not data', lambda k: k.startswith('vocabulary')))
+    for title, test in groups:
+        ks = [(k, v) for k, v in kinds.most_common() if test(k)]
+        lines.append(f'{title}: {sum(v for _, v in ks)}')
+        lines += [f'  {v:6d}  {k}' for k, v in ks]
     open(os.path.join(a.out, 'summary.txt'), 'w').write('\n'.join(lines) + '\n')
     print('\n'.join(lines))
 
