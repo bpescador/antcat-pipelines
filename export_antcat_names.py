@@ -108,13 +108,15 @@ def build_replacement_map(rows, ix, TH):
     """homonym antcat_id -> replacement antcat_id, from the history prose.
 
     Species names resolve on protonym identity (epithet, author, year), which is
-    genus-independent; genus-group homonyms resolve on the genus name + year."""
+    genus-independent; when that identity fits names in several genera, the genus the
+    prose names decides (2026-11-11). Genus-group homonyms resolve on the genus name + year."""
     def term(r):
         return (r[ix['subspecies']].strip() or r[ix['species']].strip())
 
     by_eay = defaultdict(list)      # (epithet, authorkey, year) -> ids   (species)
     by_ty = defaultdict(list)       # (terminal, year) -> ids            (fallback)
     by_genus_y = defaultdict(list)  # (genus, year) -> ids               (genus-group)
+    genera = {}                     # id -> {current genus, original genus}
     homonym_ids = set()
     for r in rows:
         if len(r) <= TH:
@@ -126,6 +128,7 @@ def build_replacement_map(rows, ix, TH):
         t = term(r)
         if t:
             p = parse_protonym(strip_html(r[TH]))
+            genera[rid] = {fold(r[ix['genus']].strip()).lower()} | ({p[0]} if p else set())
             if p:
                 by_eay[(p[1], p[2], p[3])].append(rid)
             if yr:
@@ -138,6 +141,11 @@ def build_replacement_map(rows, ix, TH):
         p = parse_protonym(s)
         if p:
             hit = by_eay.get((p[1], p[2], p[3])) or by_ty.get((p[1], p[3]))
+            if len(hit or []) > 1:
+                # same epithet, author and year in several genera (Forel, 1915 named
+                # mjobergi in many): keep the names in the genus the prose names
+                same = [h for h in hit if p[0] in genera.get(h, ())]
+                hit = same or hit
             if hit:
                 return hit
         gm = GENUS_TOK.match(s)                         # genus-group name

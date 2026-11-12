@@ -39,6 +39,21 @@ cases = {
 bad = {t[:40]: (P(t), want) for t, want in cases.items() if P(t) != want}
 assert not bad, bad
 PY
+# homonym replacement (2026-11-11): when one epithet, author and year fits homonyms in several
+# genera (Forel, 1915 mjobergi), the genus named in "Replacement name for ..." decides
+PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: homonym replacement ignores the named genus in export_antcat_names.py"; fail=1; }
+from export_antcat_names import build_replacement_map as B
+H = ['antcat id', 'genus', 'species', 'subspecies', 'year', 'status', 'taxonomic history html']
+ix = {h: i for i, h in enumerate(H)}
+rows = [
+ ['1', 'Leptogenys', 'mjobergi', '', '1915', 'homonym', 'Dorylozelus mjobergi Forel, 1915: 61 (w.) AUSTRALIA.'],
+ ['2', 'Prolasius', 'mjobergi', '', '1915', 'homonym', 'Prenolepis mjobergi Forel, 1915: 70 (w.) AUSTRALIA.'],
+ ['3', 'Leptogenys', 'tricosa', '', '1969', 'valid', 'Leptogenys tricosa Taylor, 1969: 1 (w.). Replacement name for Leptogenys mjobergi (Forel, 1915).'],
+ ['4', 'Prolasius', 'mjoebergellus', '', '1951', 'valid', 'Prolasius mjoebergellus Taylor, 1951: 2 (w.). Replacement name for Prolasius mjobergi (Forel, 1915).'],
+]
+r, _ = B(rows, ix, 6)
+assert r == {'1': '3', '2': '4'}, r
+PY
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
 grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
