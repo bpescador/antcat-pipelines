@@ -9,7 +9,7 @@ Without part of speech in AntCat, TW's spellings drift from AntCat's (trochis/tr
 Plan: claude/GENDER_AGREEMENT_PLAN.md, Phase 1 (rules below, in order).
 
   1 original ends -i, -ae, -orum, -arum      noun_in_genitive_case   high    changed spelling: probable error
-  2 -ensis/-iensis, current -ensis or -ense   adjective               high
+  2 -ensis/-ense, current -ensis or -ense     adjective               high
   3 other -is or -e                           manual                  none    the trochis trap: noun or adjective
     -cola/-colus/-colum (dweller)             manual                  none    sphagnicolus -> sphagnicola (Nov 2026):
                                                                               a noun keeps its original spelling
@@ -24,6 +24,9 @@ development branch checked 2026-09-24), without its table of irregular adjective
 Input:  --names antcat_names.tsv (export_antcat_names.py: original_epithet, spelling_differs)
         --genus-gender genus_gender.tsv (optional; gender/gender_baseline.rb): rule 4 rows whose current
           ending disagrees with the current genus's gender are noted (Strumigenys calvus, Nov 2026)
+        --set part_of_speech_set.tsv (optional; gender/gender_baseline.rb): the part of speech editors
+          already set. It wins over the proposal; where they differ the row is flagged, because either the
+          typed value or the current spelling is wrong (Leptanilloides prometea, Nov 2026)
 Output: --out folder: part_of_speech_proposals.tsv, summary.txt
 """
 import argparse, collections, csv, os, re, sys
@@ -70,8 +73,8 @@ def classify(orig, cur, gender=''):
         note = ('genitive noun: the change is not a gender change (emendation, misspelling or error): check'
                 if cur != orig else '')
         return 1, 'noun_in_genitive_case', 'high', note
-    if re.search(r'i?ensis$', orig) and re.search(r'i?ens(is|e)$', cur):
-        return 2, 'adjective', 'high', ''
+    if re.search(r'i?ens(is|e)$', orig) and re.search(r'i?ens(is|e)$', cur):
+        return 2, 'adjective', 'high', ''          # -ense too: Monomorium howense -> Chelaner howensis
     if re.search(r'(is|e)$', orig):
         return 3, 'manual', 'none', 'noun or adjective: check the etymology'
     if re.search(r'col(a|us|um)$', orig):
@@ -91,7 +94,12 @@ def main():
     ap.add_argument('--names', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--genus-gender')
+    ap.add_argument('--set')
     a = ap.parse_args()
+    typed = {}
+    if a.set:
+        typed = {t['taxon_id']: t['gender_agreement_type']
+                 for t in csv.DictReader(open(a.set, encoding='utf-8'), delimiter='\t')}
     gender = {}
     if a.genus_gender:
         for g in csv.DictReader(open(a.genus_gender, encoding='utf-8'), delimiter='\t'):
@@ -106,11 +114,17 @@ def main():
         orig = r['original_epithet'].strip().lower()
         cur = (r['subspecies'] or r['species']).strip().lower()
         rule, pos, conf, note = classify(orig, cur, gender.get(r['genus'], ''))
+        have = typed.get(r['antcat_id'], '')
+        if have and have != pos and not (have == 'participle' and pos == 'adjective'):
+            # a changed spelling is only right for an adjective or participle
+            note = (f'typed {have}, but the spelling was changed: the typed value or the spelling is wrong'
+                    if have.startswith('noun') else f'typed {have}: settles the manual check' if pos == 'manual'
+                    else f'typed {have}; proposal {pos or "none"}') + (f'; {note}' if note else '')
         stats[(rule, pos or '-', r['status'])] += 1
         out.append(dict(antcat_id=r['antcat_id'], current_name=r['scientific_name'], status=r['status'],
                         original_combination=r['original_combination'], original_epithet=orig,
                         current_epithet=cur, forms='/'.join(predict_three_forms(orig)), rule=rule,
-                        proposed_part_of_speech=pos, confidence=conf, note=note))
+                        proposed_part_of_speech=pos, confidence=conf, typed_part_of_speech=have, note=note))
     out.sort(key=lambda d: (d['rule'], d['current_name']))
     with open(os.path.join(a.out, 'part_of_speech_proposals.tsv'), 'w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=list(out[0].keys()), delimiter='\t', lineterminator='\n')
@@ -123,7 +137,9 @@ def main():
     lines = [f'protonyms with a changed spelling: {len(out)} (valid {sum(valid.values())})'] + \
             [f'  rule {k} {names[k]}: {by_rule[k]} (valid {valid[k]})' for k in sorted(by_rule)] + \
             [f'  rule 4 endings that disagree with the genus gender: '
-             f'{sum(1 for d in out if d["note"].startswith("ending disagrees"))}']
+             f'{sum(1 for d in out if "ending disagrees" in d["note"])}',
+             f'  part of speech already typed: {sum(1 for d in out if d["typed_part_of_speech"])}; '
+             f'typed noun but spelling changed: {sum(1 for d in out if "the typed value or the spelling" in d["note"])}']
     open(os.path.join(a.out, 'summary.txt'), 'w').write('\n'.join(lines) + '\n')
     print('\n'.join(lines))
 
