@@ -56,7 +56,7 @@ def predict_three_forms(name):
         return (n[:-1] + 'is', n[:-1] + 'is', n)
     if n.endswith('us'):
         return (n, n[:-2] + 'a', n[:-2] + 'um')
-    if n in ('niger', 'integer'):
+    if re.search(r'(niger|integer)$', n):    # TW matches compounds too: alboniger -> albonigra
         return (n, n[:-2] + 'ra', n[:-2] + 'rum')
     if re.search(r'(fer|ger)$', n):
         return (n, n + 'a', n + 'um')

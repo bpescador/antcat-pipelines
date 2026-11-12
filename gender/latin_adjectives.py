@@ -2,6 +2,8 @@
 
 Source: SpeciesFileGroup/taxonworks, config/initializers/constants/model/taxon_names.rb (LATIN_ADJECTIVES),
 development branch at 5dea15e (2026-11-12). Regenerate rather than edit by hand.
+Copyright (c) 2016 Species File Group, MIT License:
+https://github.com/SpeciesFileGroup/taxonworks/blob/development/LICENSE.txt
 """
 LATIN_ADJECTIVES = {
     'acris': ('acer', 'acris', 'acre'),
