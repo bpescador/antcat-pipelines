@@ -59,6 +59,7 @@ PYTHONPATH=gender python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: gender/propo
 from propose_part_of_speech import predict_three_forms as F, classify as C
 assert F('crassispina') == ('crassispinus', 'crassispina', 'crassispinum')
 assert F('niger') == ('niger', 'nigra', 'nigrum') and F('trochis')[2] == 'troche'
+assert F('acris') == ('acer', 'acris', 'acre')                          # TW's irregular-adjective table is used
 assert C('trochis', 'troche')[1] == 'manual'                 # the trochis trap goes to a person
 assert C('pomonae', 'pomone')[1] == 'noun_in_genitive_case'
 assert C('calva', 'calvus', 'feminine')[3].startswith('ending disagrees')

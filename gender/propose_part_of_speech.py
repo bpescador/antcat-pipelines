@@ -22,7 +22,9 @@ Plan: claude/GENDER_AGREEMENT_PLAN.md, Phase 1 (rules below, in order).
     irregular adjective); listed, no proposal
 
 predict_three_forms is ported from TaxonWorks (lib/utilities/nomenclature.rb, SpeciesFileGroup/taxonworks,
-development branch checked 2026-09-24), without its table of irregular adjectives.
+development branch checked 2026-09-24), with its table of irregular adjectives (gender/latin_adjectives.py,
+copied 2026-11-12 from 5dea15e). TW computes the three spellings itself from part of speech and genus gender;
+this copy only keeps AntCat's proposals identical to what TW will show.
 
 Input:  --names antcat_names.tsv (export_antcat_names.py: original_epithet, spelling_differs)
         --genus-gender genus_gender.tsv (optional; gender/gender_baseline.rb): rule 4 rows whose current
@@ -34,11 +36,17 @@ Output: --out folder: part_of_speech_proposals.tsv, summary.txt
 """
 import argparse, collections, csv, os, re, sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from latin_adjectives import LATIN_ADJECTIVES  # noqa: E402  (TaxonWorks' table)
+
 csv.field_size_limit(sys.maxsize)
 
 
 def predict_three_forms(name):
-    """-> (masculine, feminine, neuter), as TaxonWorks' Utilities::Nomenclature.predict_three_forms"""
+    """-> (masculine, feminine, neuter), as TaxonWorks' Utilities::Nomenclature.predict_three_forms,
+    including its table of irregular adjectives (acer/acris/acre...), checked first as TW does"""
+    if name in LATIN_ADJECTIVES:
+        return LATIN_ADJECTIVES[name]
     n = name
     if re.search(r'color(is)?$', n):
         return (n, n, n)
