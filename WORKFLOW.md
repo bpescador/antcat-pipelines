@@ -104,9 +104,28 @@ acceptance (this is how 5 surviving page artifacts were caught in Aug 2026).
 
 ## Handoff
 
-Three files to Tom: `antcat_references.bib`, `antcat_names.tsv`,
-`origin_citation_links.tsv`. The `source_id` column is instance-specific;
-Tom re-resolves it on the target instance via `antcat_reference_id` (stable).
+Three files: `antcat_references.bib`, `antcat_names.tsv`, `origin_citation_links.tsv`.
+Since 2026-11-11 the TaxonWorks project loads them into TW production itself, through
+Brian's logged-in Chrome session (project AntWeb on sfg.taxonworks.org); SFG (Tom) no
+longer does the load. The `source_id` column is instance-specific; it is re-resolved on
+the target instance via `antcat_reference_id` (stable; in TW the Source identifier is
+namespace `antcat_ref`, value `antcatNNNN`).
+
+## Stage 4 — status recount (after a TW load)
+
+The TW project exports one row per TW Protonym (`tw_production_protonyms_YYYY-MM-DD.tsv`).
+`tw_status_diff.py` joins it to `antcat_names.tsv` and lists the names whose status or
+target differs:
+
+```bash
+python3 tw_status_diff.py --antcat tw_out_YYYYMMDD/antcat_names.tsv \
+  --tw tw_production_protonyms_YYYY-MM-DD.tsv --out tw_status_YYYYMMDD
+```
+
+Outputs `tw_status_differences.tsv`, `antcat_not_matched.tsv` and `summary.txt`. The join
+and the status rules are in the script's docstring. Differences in spelling or subgenus
+alone do not count. Read the summary's "matched" line first: AntCat names not matched
+should be a handful, each explained.
 
 ## Known caveats — 2026-08 cycle
 
@@ -152,6 +171,18 @@ Google Drive for offsite.
   (21 names now blank, listed in `page_changes_20261111.tsv`); and DOI links before the
   page hid 76 real pages (now read; `page_changes_doiurl_20261111.tsv`). Build the handoff
   `antcat_names.tsv` with the fixed code: reference_pages parsed 23,044.
+  **Production load complete the same day, done from the TaxonWorks project** (Brian's
+  Chrome session, project AntWeb on sfg.taxonworks.org), not by SFG; Tom Klein's pending
+  load is no longer needed. As reported by the TW project, each record read back: 13,043
+  Sources (`antcat_ref`); origin citations 20,740 by protonym key plus 576 by current
+  name, author and year; 356 Protonyms created plus 6 fossil genera and tribe
+  Eridanomyrmini; 29 same-protonym placement updates; Lieberman et al. 2026 (17 names);
+  the 131 type-status corrections. Per-record logs for the first four were lost when the
+  browser tab reloaded; the TW Protonym export lists every name with its TW id.
+  Recount (Stage 4, retires July's 1,953): 23,135 of 23,142 names matched; 363 rows in
+  `tw_status_differences.tsv`. It found a fault in `export_antcat_names.py`: a homonym
+  could take the replacement name of a same-epithet homonym in another genus (2 rows in the
+  11 Nov file; fixed in 7f6453e).
 
 - **2026-08-14** — production set built and verified in an AntCat-project
   session: 12,994 references / 23,100 names / 20,781 triples; join 100.00%;

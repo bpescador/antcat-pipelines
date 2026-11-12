@@ -1,5 +1,18 @@
 # antcat-pipelines — changelog
 
+## 2026-11-11 -- tw_status_diff.py; homonym replacement fix in export_antcat_names.py
+- tw_status_diff.py, new, read only, standard library: status differences between antcat_names.tsv
+  and the TW project's Protonym export, name by name. Join: protonym key; current name + author +
+  year for TW rows keyed on the current name; then the same with gender endings allowed; AntCat
+  misspellings to TW [sic] records. Same-key homonyms are told apart by current name, then original
+  combination. Targets are compared through the join, so spelling and subgenus differences do not
+  count. On the 11 Nov files: 23,135 of 23,142 names matched; 363 differences.
+- export_antcat_names.py (7f6453e): "Replacement name for X" resolved on epithet + author + year
+  alone gave a homonym another genus's replacement when the same epithet, author and year occur in
+  several genera. Now the genus the prose names decides. 2 rows change on the 11 Nov dump (Prolasius
+  mjobergi, Tapinoma luteum emeryi). smoke.sh: fixture test.
+- WORKFLOW.md: Stage 4 (recount); handoff now loaded by the TW project, not SFG; 2026-11-11 history.
+
 ## 2026-11-11 -- antweb_types/typestatus_corrections.py
 - New, read only: turns the refreshed type-status sheet plus a returned week workbook into
   correction lists by the AntWeb record's source (TaxonWorks, upload group 76 = MZSP, other),
