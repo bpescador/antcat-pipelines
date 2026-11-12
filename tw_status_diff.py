@@ -9,13 +9,18 @@ Inputs
             is_valid, valid_taxon_name_id, valid_name, classifications, status_relationships
   --out     folder for the output files
 
-Join (as the TW project specified, 2026-11-11)
-  1. protonym_key, against TW rows whose key came from the original combination;
-     if a key has several TW rows, keep the one whose first author matches.
-  2. for AntCat names still unmatched: current name + author + year, against TW rows whose
-     key came from the current name (no original combination in TW).
-  TW "[sic]" spelling records (Usage::Misspelling, IncorrectOriginalSpelling) have no
-  AntCat row of their own: AntCat folds misspellings into the protonym.
+  --worldants  optional: the AntCat dump the names file was built from; adds AntCat's own
+               history lines (antcat_evidence), quoted for every row that removes something in TW
+
+Join, in order; the first step that finds exactly one TW Protonym wins
+  1. protonym_key (TW rows keyed on the original combination)
+  2. current name + author + year (TW rows keyed on the current name)
+  3. protonym_key with gender endings allowed
+  4. current genus + terminal epithet + author + year, endings allowed
+  5. AntCat "unavailable misspelling" rows: TW [sic] records by current name + author + year
+  Several hits: first author must match; then current name, original combination, then
+  genus + epithet decide (homonyms that share a key). TW "[sic]" spelling records have no AntCat
+  row of their own: AntCat folds misspellings into the protonym.
 
 Status, AntCat vocabulary -> what TW must show to agree
   valid                     is_valid, no NomenDubium
@@ -34,12 +39,21 @@ genus and terminal epithet, allowing the gender endings.
 
 Outputs
   tw_status_differences.tsv  the differences, one row per name, grouped in summary.txt into
-                             status or target differences, TW record gaps, and vocabulary
+                             status or target differences, TW record gaps, and vocabulary.
+                             Columns for the TW skill (tw-update-name-status):
+                               action        the TW operation, in TW's vocabulary
+                               action_class  add (nothing is removed) | remove (a TW relationship or
+                                             classification is deleted: SQL export, canary and the
+                                             AntCat evidence first) | review (decide by hand)
+                               tw_target_should_id  TW id of AntCat's target, through the join
+                               antcat_evidence      AntCat's status history lines (with --worldants)
+                               antcat_check         set when AntCat's status and its history disagree:
+                                                    fix AntCat first, do not change TW
   antcat_not_matched.tsv     AntCat names with no TW Protonym under either join
   summary.txt                counts
 Read-only. Standard library only.
 """
-import argparse, collections, csv, os, re, sys, unicodedata
+import argparse, collections, csv, html as htmllib, os, re, sys, unicodedata
 
 csv.field_size_limit(sys.maxsize)
 
@@ -128,11 +142,87 @@ def tw_status(r):
     return 'invalid, no relationship', '', f
 
 
+SYNONYM = 'TaxonNameRelationship::Iczn::Invalidating::Synonym'
+REPLACED_HOMONYM = 'TaxonNameRelationship::Iczn::Invalidating::Synonym::Objective::ReplacedHomonym'
+C_HOMONYM = 'TaxonNameClassification::Iczn::Available::Invalid::Homonym'
+C_DUBIUM = 'TaxonNameClassification::Iczn::Available::Valid::NomenDubium'
+C_UNAVAILABLE = 'TaxonNameClassification::Iczn::Unavailable'
+
+
+def action_for(kind, ast, ar):
+    """difference kind -> (action, action_class). Every action is checked against TW's live state
+    first: if TW already shows what AntCat shows, the row is skipped, not repeated."""
+    has_target = bool(ar['valid_name'])
+    if kind == 'status: AntCat synonym, TW valid':
+        return f'add {SYNONYM} -> tw_target_should_id', 'add'
+    if kind == 'status: AntCat homonym, TW valid':
+        if has_target:
+            return f'add {REPLACED_HOMONYM} -> tw_target_should_id (subject homonym, object replacement)', 'add'
+        return f'add {C_HOMONYM}', 'add'
+    if kind == 'status: AntCat unidentifiable, TW valid':
+        return f'add {C_DUBIUM}', 'add'
+    if kind == 'status: AntCat unavailable, TW valid':
+        return f'add {C_UNAVAILABLE}', 'add'
+    if kind.startswith('TW: invalid with no synonym relationship'):
+        return f'add {SYNONYM} -> tw_target_should_id, only if still missing live', 'add'
+    if kind.startswith('vocabulary:'):
+        return f'add {C_DUBIUM}; remove the UncertainPlacement relationship', 'remove'
+    if kind == 'status: AntCat valid, TW synonym':
+        return 'remove the Synonym relationship (AntCat: valid)', 'remove'
+    if kind.startswith('TW record conflict'):
+        return 'remove the Synonym relationship (AntCat: valid; TW already resolves it as valid)', 'remove'
+    if kind == 'target differs':
+        rel = REPLACED_HOMONYM if ast == 'homonym' else SYNONYM
+        return f'remove the relationship to tw_target_id; add {rel} -> tw_target_should_id', 'remove'
+    return 'decide by hand from antcat_evidence', 'review'
+
+
+STATUS_WORDS = re.compile(
+    r'synonym|Revived|Status as species|Status as subspecies|homonym|Replacement name|nomen nudum|'
+    r'[Uu]navailable|[Uu]nidentifiable|Excluded|incertae sedis|[Mm]isspel|emendation', re.I)
+
+
+def antcat_history(path, ids):
+    """antcat id -> AntCat's status history lines for that protonym, in AntCat's order, ' | '-joined"""
+    out = {}
+    with open(path, encoding='utf-8', errors='replace', newline='') as fh:
+        rd = csv.reader(fh, delimiter='\t')
+        hdr = next(rd)
+        ix = {h: i for i, h in enumerate(hdr)}
+        th = ix['taxonomic history html']
+        for r in rd:
+            if len(r) <= th or r[ix['antcat id']].strip() not in ids:
+                continue
+            text = r[th]
+            k = text.find('Taxonomic history')
+            if k < 0:
+                continue
+            items = [re.sub(r'\s+', ' ', htmllib.unescape(strip_html(x))).strip()
+                     for x in re.split(r'</?div[^>]*>', text[k:])]
+            lines = [x for x in items if x and STATUS_WORDS.search(x) and len(x) < 600]
+            out[r[ix['antcat id']].strip()] = ' | '.join(lines)[:1500]
+    return out
+
+
+def antcat_check(status, evidence):
+    """Flag rows where AntCat's status and its own history disagree: fix AntCat first, then sync
+    (the Melophorus marius case: valid, with a history line saying junior synonym)."""
+    if not evidence:
+        return ''
+    restored = re.search(r'Status as (?:sub)?species|Revived|Senior synonym of|Raised to species', evidence)
+    if status == 'valid' and 'Junior synonym of' in evidence and not restored:
+        return 'AntCat valid, but its history has junior-synonym lines and no revival: check AntCat first'
+    if status == 'synonym' and not re.search(r'[Jj]unior synonym|[Ss]ynonym of', evidence):
+        return 'AntCat synonym, but its history has no synonymy line: check AntCat first'
+    return ''
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
     ap.add_argument('--antcat', required=True)
     ap.add_argument('--tw', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--worldants', help='AntCat dump, for antcat_evidence')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
 
@@ -202,9 +292,17 @@ def main():
         else:
             unmatched.append((r, why))
 
-    tw_to_a = {}
+    tw_to_a, a_to_tw = {}, {}
     for ar, tr, _ in pairs:
         tw_to_a.setdefault(tr['tw_taxon_name_id'], ar['antcat_id'])
+        a_to_tw.setdefault(ar['antcat_id'], tr['tw_taxon_name_id'])
+
+    def tw_id_of_antcat_target(ar):
+        t = a_by_id.get(ar['valid_name_id'])
+        if t is None and ar['valid_name']:
+            c = a_by_name.get(plain_name(ar['valid_name']), [])
+            t = c[0] if len(c) == 1 else None
+        return a_to_tw.get(t['antcat_id'], '') if t else ''
 
     def antcat_target_key(ar):
         t = a_by_id.get(ar['valid_name_id'])
@@ -256,6 +354,7 @@ def main():
             continue
         kinds[kind] += 1
         tt = tw_by_id.get(tgt, {})
+        action, action_class = action_for(kind, ast, ar)
         out.append(dict(
             difference=kind, antcat_id=ar['antcat_id'], antcat_name=ar['scientific_name'],
             antcat_authorship=strip_html(ar['authorship']), antcat_status=ast,
@@ -265,7 +364,16 @@ def main():
             tw_target=tt.get('cached', tr['valid_name'] if tgt else ''), tw_target_id=tgt,
             tw_target_antcat_id=tw_to_a.get(tgt, ''),
             tw_classifications=tr['classifications'], tw_relationships=tr['status_relationships'],
-            joined_on=joined))
+            joined_on=joined, action=action, action_class=action_class,
+            tw_target_should_id=tw_id_of_antcat_target(ar) if ar['valid_name'] else '',
+            antcat_evidence='', antcat_check=''))
+
+    if a.worldants:
+        want = {d['antcat_id'] for d in out}
+        hist = antcat_history(a.worldants, want)
+        for d in out:
+            d['antcat_evidence'] = hist.get(d['antcat_id'], '')
+            d['antcat_check'] = antcat_check(d['antcat_status'], d['antcat_evidence'])
 
     out.sort(key=lambda d: (d['difference'], d['antcat_name']))
     cols = list(out[0].keys()) if out else ['difference']
@@ -283,6 +391,7 @@ def main():
     matched_tw = {tr['tw_taxon_name_id'] for _, tr, _ in pairs}
     tw_left = [r for r in T if r['tw_taxon_name_id'] not in matched_tw]
     spelling = sum(1 for r in tw_left if tw_status(r)[0] == 'spelling record')
+    acts = collections.Counter(d['action_class'] for d in out)
     lines = [
         f'AntCat names (species group): {len(A)}',
         f'TW Protonyms (species, subspecies): {len(T)}',
@@ -290,7 +399,8 @@ def main():
         f'AntCat names not matched: {len(unmatched)}  (antcat_not_matched.tsv)',
         f'TW Protonyms not matched: {len(tw_left)}  of which [sic] spelling records {spelling}',
         f'agree: {sum(agree.values())}  ' + ', '.join(f'{k} {v}' for k, v in agree.most_common()),
-        f'rows in tw_status_differences.tsv: {len(out)}',
+        f'rows in tw_status_differences.tsv: {len(out)}  (action_class: '
+        + ', '.join(f'{k} {v}' for k, v in sorted(acts.items())) + ')',
     ]
     groups = (('status or target differs', lambda k: k.startswith(('status:', 'target'))),
               ('TW record gaps (the status agrees)', lambda k: k.startswith('TW')),
