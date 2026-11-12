@@ -42,6 +42,11 @@ from latin_adjectives import LATIN_ADJECTIVES  # noqa: E402  (TaxonWorks' table)
 csv.field_size_limit(sys.maxsize)
 
 
+# -iger ('bearing') compounds whose stem ends in n, which TW's /(niger|integer)$/ rule mistakes for niger 'black'
+# (TW gives cornigra, spinigra, lanigra). The stems are every such case among AntCat's epithets (Nov 2026).
+IGER_COMPOUND = re.compile(r'(corn|lan|spin|pinn|crin|ign|con|dolon)(iger|igera|igerum)$')
+
+
 def predict_three_forms(name):
     """-> (masculine, feminine, neuter), as TaxonWorks' Utilities::Nomenclature.predict_three_forms,
     including its table of irregular adjectives (acer/acris/acre...), checked first as TW does"""
@@ -56,6 +61,10 @@ def predict_three_forms(name):
         return (n[:-1] + 'is', n[:-1] + 'is', n)
     if n.endswith('us'):
         return (n, n[:-2] + 'a', n[:-2] + 'um')
+    m = IGER_COMPOUND.search(n)               # corn-iger, lan-iger, spin-iger: 'bearing', not niger 'black'
+    if m:
+        b = n[:m.start(2)] + 'iger'
+        return (b, b + 'a', b + 'um')
     if re.search(r'(niger|integer)$', n):    # TW matches compounds too: alboniger -> albonigra
         return (n, n[:-2] + 'ra', n[:-2] + 'rum')
     if re.search(r'(fer|ger)$', n):
