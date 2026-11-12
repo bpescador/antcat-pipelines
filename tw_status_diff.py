@@ -178,7 +178,7 @@ def action_for(kind, ast, ar):
 
 
 STATUS_WORDS = re.compile(
-    r'synonym|Revived|Status as species|Status as subspecies|homonym|Replacement name|nomen nudum|'
+    r'synonym|Revived|Status as species|Status as subspecies|Subspecies of|homonym|Replacement name|nomen nudum|'
     r'[Uu]navailable|[Uu]nidentifiable|Excluded|incertae sedis|[Mm]isspel|emendation', re.I)
 
 
@@ -210,6 +210,12 @@ def antcat_check(status, evidence):
     if not evidence:
         return ''
     restored = re.search(r'Status as (?:sub)?species|Revived|Senior synonym of|Raised to species', evidence)
+    # a later "Subspecies of" citation also restores it (Formica cinerea iberica: junior synonym of cinerea by
+    # Seifert 2002 and Radchenko 2016, subspecies of cinerea again by Schultz & Seifert 2026)
+    years = lambda pat: [int(y) for ln in evidence.split(' | ') if re.search(pat, ln)
+                         for y in re.findall(r'\b(1[789]\d\d|20\d\d)[a-z]?\b', ln)]
+    syn, sub = years(r'Junior synonym of'), years(r'Subspecies of')
+    restored = restored or (syn and sub and max(sub) > max(syn))
     if status == 'valid' and 'Junior synonym of' in evidence and not restored:
         return 'AntCat valid, but its history has junior-synonym lines and no revival: check AntCat first'
     if status == 'synonym' and not re.search(r'[Jj]unior synonym|[Ss]ynonym of', evidence):

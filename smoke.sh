@@ -67,6 +67,12 @@ assert C('howense', 'howensis')[:2] == (2, 'adjective')                # -ense i
 assert C('melanocephala', 'melanocephalum')[1] == 'manual'             # noun-ending compound: policy, not rule 4
 assert C('obscura', 'obscurus')[:2] == (4, 'adjective')                # ...but a plain adjective stays rule 4
 PY
+# recount (2026-11-12): a later "Subspecies of" citation restores a name once synonymized (Formica cinerea iberica)
+PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff.antcat_check flags revived subspecies again"; fail=1; }
+from tw_status_diff import antcat_check as C
+assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251. | Subspecies of F. cinerea : Schultz & Seifert, 2026 : 33.') == ''
+assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251.').startswith('AntCat valid')
+PY
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
 grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
