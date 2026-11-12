@@ -6,8 +6,9 @@
 # protonym's part of speech, so every gap here is a spelling TW can get wrong (trochis/troche).
 # Plan: claude/GENDER_AGREEMENT_PLAN.md (section 11 baseline, extended with genus gender).
 #
-# Prints counts; writes tmp/genera_without_gender.tsv (genus-group taxa whose name has no gender) and
-# tmp/genus_gender.tsv (every genus-group taxon with its gender).
+# Prints counts; writes tmp/genera_without_gender.tsv (genus-group taxa whose name has no gender),
+# tmp/genus_gender.tsv (every genus-group taxon with its gender) and tmp/part_of_speech_set.tsv
+# (species-group taxa whose protonym already has a part of speech).
 # Run (runbook procedure 16):
 #   docker exec -u antcat -w /app -e RAILS_ENV=production antcat-app \
 #     bundle exec rails runner tmp/gender_baseline.rb
@@ -57,3 +58,17 @@ puts "  original ends -i or -ae (genitive nouns: changed spelling probably an er
 puts "  typed as a noun but spelling changed (errors): " \
      "#{diff.where(protonyms: { gender_agreement_type: Protonym::UNCHANGEABLE_GENDER_AGREEMENT_TYPES }).count}"
 puts "unavailable misspelling taxa: #{Taxon.where(status: 'unavailable misspelling').count}"
+
+# Every species-group taxon whose protonym has a part of speech (about 310 protonyms in Nov 2026):
+# names the noun-typed protonyms with a changed spelling, and checks the scripted proposals
+# (gender/propose_part_of_speech.py) against what editors already set.
+pos = Rails.root.join('tmp', 'part_of_speech_set.tsv').to_s
+File.open(pos, 'w') do |f|
+  f.puts %w[protonym_id protonym_name gender_agreement_type taxon_id taxon_name status spelling_changed].join("\t")
+  Taxon.joins(:name, protonym: :name).where(names: { type: Name::SPECIES_GROUP_NAMES }).
+    where.not(protonyms: { gender_agreement_type: nil }).order('names_protonyms.name', 'names.name').
+    pluck('protonyms.id', 'names_protonyms.name', 'protonyms.gender_agreement_type', 'taxa.id', 'names.name',
+          'taxa.status', Arel.sql('names.epithet <> names_protonyms.epithet')).
+    each { |row| f.puts row.map { |v| v.to_s.gsub(/[\t\r\n]+/, ' ') }.join("\t") }
+end
+puts "  part of speech already set: #{pos}"

@@ -11,6 +11,8 @@ Plan: claude/GENDER_AGREEMENT_PLAN.md, Phase 1 (rules below, in order).
   1 original ends -i, -ae, -orum, -arum      noun_in_genitive_case   high    changed spelling: probable error
   2 -ensis/-iensis, current -ensis or -ense   adjective               high
   3 other -is or -e                           manual                  none    the trochis trap: noun or adjective
+    -cola/-colus/-colum (dweller)             manual                  none    sphagnicolus -> sphagnicola (Nov 2026):
+                                                                              a noun keeps its original spelling
   4 -us -a -um -er -ra -rum -ior -ius, and the current spelling is one of the three predicted forms
                                               adjective               medium  sample-check against originals
   5 current spelling matches no predicted form: not a pure gender change (emendation, misspelling,
@@ -72,6 +74,8 @@ def classify(orig, cur, gender=''):
         return 2, 'adjective', 'high', ''
     if re.search(r'(is|e)$', orig):
         return 3, 'manual', 'none', 'noun or adjective: check the etymology'
+    if re.search(r'col(a|us|um)$', orig):
+        return 3, 'manual', 'none', '-cola (dweller) is a noun, which keeps its original spelling: check'
     if re.search(r'(us|a|um|er|ra|rum|ior|ius)$', orig) and cur in forms:
         want = dict(zip(('masculine', 'feminine', 'neuter'), forms)).get(gender)
         if want and cur != want:

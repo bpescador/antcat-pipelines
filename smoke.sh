@@ -62,6 +62,7 @@ assert F('niger') == ('niger', 'nigra', 'nigrum') and F('trochis')[2] == 'troche
 assert C('trochis', 'troche')[1] == 'manual'                 # the trochis trap goes to a person
 assert C('pomonae', 'pomone')[1] == 'noun_in_genitive_case'
 assert C('calva', 'calvus', 'feminine')[3].startswith('ending disagrees')
+assert C('sphagnicolus', 'sphagnicola', 'masculine')[1] == 'manual'  # -cola is a noun: not rule 4
 PY
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
