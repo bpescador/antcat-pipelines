@@ -13,6 +13,9 @@ Plan: claude/GENDER_AGREEMENT_PLAN.md, Phase 1 (rules below, in order).
   3 other -is or -e                           manual                  none    the trochis trap: noun or adjective
     -cola/-colus/-colum (dweller)             manual                  none    sphagnicolus -> sphagnicola (Nov 2026):
                                                                               a noun keeps its original spelling
+    compound ending in a noun (-cephalus,     manual                  none    noun phrase under Yanega's reading
+    -spinus, -nodus, -scapus, -notus...)                                      (Littauer 2025), adjective under Bolton's:
+                                                                              AntCat policy decision (Nov 2026)
   4 -us -a -um -er -ra -rum -ior -ius, and the current spelling is one of the three predicted forms
                                               adjective               medium  sample-check against originals
   5 current spelling matches no predicted form: not a pure gender change (emendation, misspelling,
@@ -67,6 +70,13 @@ def predict_three_forms(name):
     return (n, n, n)
 
 
+# Compounds whose last element is a Greek or Latin noun (head, spine, node, back, scape, jaw, tail...).
+# Commissioner Yanega's letter of 26 Sep 2025 (Chelaner longinode; followed in Littauer 2025): such
+# compounds are noun phrases and keep their original ending, whatever it is; Bolton declined them.
+NOUN_COMPOUND = re.compile(r'^[a-z]{3,}?(nod|not|dors|scap|gnath|cephal|ophthalm|pter|mer|som|acanth|spin|lob|'
+                           r'carin|cost|crist|squam|pyg|cer|cnem|derm|gastr|rhach|stern|ommat|ur)(us|a|um)$')
+
+
 def classify(orig, cur, gender=''):
     forms = predict_three_forms(orig)
     if re.search(r'(i|ae|orum|arum)$', orig):
@@ -79,6 +89,10 @@ def classify(orig, cur, gender=''):
         return 3, 'manual', 'none', 'noun or adjective: check the etymology'
     if re.search(r'col(a|us|um)$', orig):
         return 3, 'manual', 'none', '-cola (dweller) is a noun, which keeps its original spelling: check'
+    if NOUN_COMPOUND.match(orig) and not re.search(r'(obscur|impur|matur|^pur|ignot|sincer)', orig):
+        return 3, 'manual', 'none', ('compound ending in a noun (-cephalus, -spinus, -nodus...): a noun phrase, '
+                                     'invariable, under the Glossary as read by Yanega (Littauer 2025); '
+                                     'declined as an adjective by Bolton: AntCat policy decision')
     if re.search(r'(us|a|um|er|ra|rum|ior|ius)$', orig) and cur in forms:
         want = dict(zip(('masculine', 'feminine', 'neuter'), forms)).get(gender)
         if want and cur != want:
