@@ -6,7 +6,7 @@
 # for citation notes):
 #   unresolved   [Unresolved junior primary|secondary homonym of {taxac|prottac N}( (CITATION)).]  -> UnresolvedJuniorHomonymOf
 #   unnecessary  Unnecessary replacement name for {taxac|prottac N}( (CITATION)).               -> UnnecessaryReplacementNameFor
-#   unidentifiable  Unidentifiable taxon: CITATIONS.                                             -> UnidentifiableTaxon
+#   unidentifiable  Unidentifiable taxon: CITATIONS.                                             -> UnplacedUnidentifiableTaxon (#1619)
 #   subgenus     Subgenus indeterminate: CITATIONS.                                              -> SubgenusIndeterminate
 #   duplicated   [Duplicated in CITATIONS.]                                                      -> DuplicatedIn
 #   nomen_nudum  [{unmissing NAME} CITATIONS. <i>Nomen nudum</i>.]                               -> NomenNudumCitation
@@ -43,7 +43,7 @@ LIMIT = ENV['LIMIT']&.to_i
 EDIT_SUMMARY = '[automated] Convert free-text history lines to structured history items (claude/HISTORY_ORDER.md)'
 
 D = History::Definitions
-abort 'PR #1618 is not deployed (no DuplicatedIn type).' unless D::TYPE_DEFINITIONS.key?('DuplicatedIn')
+abort 'PR #1619 is not deployed (no UnplacedUnidentifiableTaxon type).' unless D::TYPE_DEFINITIONS.key?('UnplacedUnidentifiableTaxon')
 abort 'PR #1616 is not deployed (no citation_note).' unless HistoryItem.column_names.include?('citation_note')
 abort 'PR #1593 is not deployed.' unless HistoryPresenter.private_method_defined?(:year_then_editor_sort_key)
 
@@ -78,7 +78,7 @@ KIND_DEFS = {
     line: ->(_m, obj, body) { "Unnecessary replacement name for {taxac #{obj}}#{" (#{body})" if body}." }
   },
   'unidentifiable' => {
-    type: D::UNIDENTIFIABLE_TAXON, grouped: true,
+    type: D::UNPLACED_UNIDENTIFIABLE_TAXON, grouped: true,
     re: /\AUnidentifiable taxon: #{END_RE}\z/,
     key: ->(_m, _obj) { ['unidentifiable'] },
     attrs: ->(_m, _obj) { {} },
