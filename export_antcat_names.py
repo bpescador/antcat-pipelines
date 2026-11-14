@@ -16,6 +16,9 @@ different places depending on status:
 
   synonym                -> `current valid name` column (the senior name)
   unavailable misspelling-> `current valid name` column (the correct spelling)
+  unjustified emendation -> `current valid name` column (the name in its original spelling,
+                            when that is valid; AntCat #1617). The emendation has its own
+                            protonym, so it is a name row of its own.
   homonym                -> NOT in the column. The replacement is stated in the
                             history prose, in one of two places:
                               * on the REPLACEMENT's row: "Replacement name for <homonym> ..."
@@ -58,7 +61,7 @@ csv.field_size_limit(sys.maxsize)
 # which row best describes the NAME when several share one protonym
 STATUS_RANK = {'valid': 0, 'synonym': 1, 'homonym': 2, 'unavailable': 3,
                'unidentifiable': 4, 'excluded from Formicidae': 5,
-               'unavailable misspelling': 6, 'obsolete combination': 7}
+               'unavailable misspelling': 6, 'unjustified emendation': 7, 'obsolete combination': 8}
 
 FIELDS = ['protonym_key', 'antcat_id', 'scientific_name', 'genus', 'species', 'subspecies',
           'rank', 'authorship', 'year', 'status', 'valid_name', 'valid_name_id',

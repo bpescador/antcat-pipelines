@@ -33,6 +33,13 @@ Status, AntCat vocabulary -> what TW must show to agree
                             apart, as vocabulary: it is how TW mostly records these)
   excluded from Formicidae  Unavailable::Excluded
   unavailable misspelling   Usage::Misspelling, same correct spelling
+  unjustified emendation    Synonym::Objective::UnjustifiedEmendation (subject the emendation, object
+                            the name in its original spelling), same target. Status from AntCat #1617.
+                            The target is the export's final valid name: right when the original
+                            spelling is valid; see the #1539 open item for chains.
+Spelling history that is not a status (AntCat history items) is not compared here: Justified and
+DeemedJustified emendations map to Usage::IncorrectOriginalSpelling on the original spelling, with
+the emending work cited; Misspelled as to Usage::Misspelling.
 Targets are compared through the join (TW id -> AntCat protonym), so spelling and subgenus
 differences in the target's name do not count. A target TW has no match for is compared by
 genus and terminal epithet, allowing the gender endings.
@@ -62,6 +69,7 @@ REPLACED = 'Iczn::Invalidating::Synonym::Objective::ReplacedHomonym'
 HOMONYM_REL = 'Iczn::Invalidating::Homonym'
 MISSPELLING = 'Iczn::Invalidating::Usage::Misspelling'
 IOS = 'Iczn::Invalidating::Usage::IncorrectOriginalSpelling'
+UNJ_EMEND = 'Iczn::Invalidating::Synonym::Objective::UnjustifiedEmendation'
 REL_RE = re.compile(r'\s*(Iczn::[A-Za-z0-9:]+)\s*->\s*(\d+)\s*(.*)')
 
 
@@ -120,6 +128,7 @@ def tw_status(r):
         replacement=replaced[0] if replaced else '',
         synonym=any(t.startswith(SYN) and t != REPLACED for t in types),
         uncertain='Iczn::Validating::UncertainPlacement' in types,
+        unjustified_emendation=UNJ_EMEND in types,
         valid_id=r['valid_taxon_name_id'])
     if MISSPELLING in types or IOS in types:
         return 'spelling record', '', f
@@ -144,6 +153,7 @@ def tw_status(r):
 
 SYNONYM = 'TaxonNameRelationship::Iczn::Invalidating::Synonym'
 REPLACED_HOMONYM = 'TaxonNameRelationship::Iczn::Invalidating::Synonym::Objective::ReplacedHomonym'
+UNJUSTIFIED_EMENDATION = 'TaxonNameRelationship::' + UNJ_EMEND
 C_HOMONYM = 'TaxonNameClassification::Iczn::Available::Invalid::Homonym'
 C_DUBIUM = 'TaxonNameClassification::Iczn::Available::Valid::NomenDubium'
 C_UNAVAILABLE = 'TaxonNameClassification::Iczn::Unavailable'
@@ -159,6 +169,11 @@ def action_for(kind, ast, ar):
         if has_target:
             return f'add {REPLACED_HOMONYM} -> tw_target_should_id (subject homonym, object replacement)', 'add'
         return f'add {C_HOMONYM}', 'add'
+    if kind == 'status: AntCat unjustified emendation, TW valid':
+        return (f'add {UNJUSTIFIED_EMENDATION} -> tw_target_should_id '
+                '(subject the emendation, object the original spelling)'), 'add'
+    if kind == 'relationship: AntCat unjustified emendation, TW another synonym relationship':
+        return f'remove the Synonym relationship to tw_target_id; add {UNJUSTIFIED_EMENDATION} -> tw_target_should_id', 'remove'
     if kind == 'status: AntCat unidentifiable, TW valid':
         return f'add {C_DUBIUM}', 'add'
     if kind == 'status: AntCat unavailable, TW valid':
@@ -172,7 +187,7 @@ def action_for(kind, ast, ar):
     if kind.startswith('TW record conflict'):
         return 'remove the Synonym relationship (AntCat: valid; TW already resolves it as valid)', 'remove'
     if kind == 'target differs':
-        rel = REPLACED_HOMONYM if ast == 'homonym' else SYNONYM
+        rel = {'homonym': REPLACED_HOMONYM, 'unjustified emendation': UNJUSTIFIED_EMENDATION}.get(ast, SYNONYM)
         return f'remove the relationship to tw_target_id; add {rel} -> tw_target_should_id', 'remove'
     return 'decide by hand from antcat_evidence', 'review'
 
@@ -338,6 +353,11 @@ def main():
         elif ast == 'homonym':
             if f['homonym'] and st == 'homonym':
                 return ('' if same_target(ar, f['replacement']) is not False else 'target differs'), f['replacement']
+        elif ast == 'unjustified emendation':
+            if f['unjustified_emendation']:
+                return ('' if same_target(ar, f['valid_id']) is not False else 'target differs'), f['valid_id']
+            if f['synonym'] and st == 'synonym':
+                return 'relationship: AntCat unjustified emendation, TW another synonym relationship', f['valid_id']
         elif ast == 'unavailable misspelling':
             if st == 'spelling record':
                 return ('' if same_target(ar, f['valid_id']) is not False else 'target differs'), f['valid_id']

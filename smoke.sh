@@ -76,6 +76,14 @@ from tw_status_diff import antcat_check as C
 assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251. | Subspecies of F. cinerea : Schultz & Seifert, 2026 : 33.') == ''
 assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251.').startswith('AntCat valid')
 PY
+# AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
+PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }
+from tw_status_diff import tw_status as S, action_for as A
+st, _, f = S({'classifications': '', 'is_valid': 'false', 'valid_taxon_name_id': '1',
+              'status_relationships': 'Iczn::Invalidating::Synonym::Objective::UnjustifiedEmendation -> 1 Aus bus'})
+assert f['unjustified_emendation'] and st == 'synonym'
+assert 'UnjustifiedEmendation' in A('status: AntCat unjustified emendation, TW valid', 'unjustified emendation', {'valid_name': 'Aus bus'})[0]
+PY
 grep -q 'from parse_antcat import' bolton/diff_history.py || { echo "TRIPWIRE: bolton/diff_history.py is not the canonical 761-line branch"; fail=1; }
 grep -q '_drop_unmatched' export_antcat_bibtex.py || { echo "TRIPWIRE: bracket-balancing missing from export_antcat_bibtex.py"; fail=1; }
 grep -q 'def name_relation' antweb_types/reconcile_types.py || { echo "TRIPWIRE: genus+last-epithet name comparison missing from antweb_types/reconcile_types.py"; fail=1; }
