@@ -104,14 +104,18 @@ def add_reference(db, lib, ref_id, pdf, citation, year, ocr_files, do_ocr, lang,
             if i in ocr_files:
                 path_i, file_lang = ocr_files[i]
                 text, method, used_lang = open(path_i, encoding='utf-8', errors='replace').read(), 'ocr', file_lang
-            elif old.get(i, ('',))[0] == 'ocr' and os.path.exists(path):
-                text, method, used_lang = open(path, encoding='utf-8').read(), 'ocr', old[i][1]
+            elif os.path.exists(path) and (kept := open(path, encoding='utf-8').read()).strip():
+                # OCR text already in the page file (an earlier run): never replace it with nothing. Its
+                # language comes from the database, or is eng (the 13 Nov 2026 OCR) when rebuilding.
+                text, method, used_lang = kept, 'ocr', old.get(i, ('', 'eng'))[1] or 'eng'
             elif do_ocr:
                 text, method, used_lang = ocr_page(dst, i, lang, timeout), 'ocr', lang
             else:
                 text, method = '', 'missing'
-        with open(os.path.join(page_dir, f'p{i:04d}.txt'), 'w', encoding='utf-8') as f:
-            f.write(text)
+        page_file = os.path.join(page_dir, f'p{i:04d}.txt')
+        if not os.path.exists(page_file) or open(page_file, encoding='utf-8', errors='replace').read() != text:
+            with open(page_file, 'w', encoding='utf-8') as f:
+                f.write(text)
         counts['missing' if method == 'missing' else method] += 1
         db.execute('INSERT OR REPLACE INTO pages VALUES (?,?,?,?,?)', (ref_id, i, method, used_lang, len(text.strip())))
         db.execute('DELETE FROM pages_fts WHERE ref_id = ? AND page = ?', (ref_id, i))
@@ -153,21 +157,28 @@ def main():
                         '--ocr-dir can fill')
     a.add_argument('--max-seconds', type=int, default=0,
                    help='stop cleanly, between references, after this many seconds (the Mac shell allows 180 s a call)')
+    a.add_argument('--db', help='the database to write (default <library>/library.sqlite); in the Mac shell VM use a '
+                                'file outside the shared folder and copy it in afterwards (README)')
+    a.add_argument('--shared-folder', action='store_true',
+                   help='write the database on the shell VM\'s shared folder: exclusive lock, journal in memory. '
+                        'NOT crash-safe: a run stopped mid-write corrupts the database (14 Nov 2026)')
     o = a.parse_args()
     started = time.time()
     lib = os.path.expanduser(o.library)
     os.makedirs(lib, exist_ok=True)
-    db = sqlite3.connect(os.path.join(lib, 'library.sqlite'))
-    # The Mac folder, as the shell VM sees it, is a shared mount on which SQLite's default locking and
-    # rollback journal fail ("disk I/O error", 13 Nov 2026): one writer, journal kept in memory.
-    db.execute('PRAGMA locking_mode=EXCLUSIVE')
-    db.execute('PRAGMA journal_mode=MEMORY')
+    db = sqlite3.connect(os.path.expanduser(o.db) if o.db else os.path.join(lib, 'library.sqlite'))
+    if o.shared_folder:
+        # On the VM's view of the Mac folder SQLite's default locking and rollback journal fail ("disk I/O
+        # error", 13 Nov 2026). The in-memory journal works but cannot roll back after a kill: on 14 Nov a run
+        # stopped by the shell's 180 s limit left the index corrupt. Default: SQLite's own crash-safe journal.
+        db.execute('PRAGMA locking_mode=EXCLUSIVE')
+        db.execute('PRAGMA journal_mode=MEMORY')
     db.executescript(SCHEMA)
 
     meta = {}
     if o.refs_tsv:
         for r in csv.DictReader(open(o.refs_tsv, encoding='utf-8'), delimiter='\t'):
-            meta[int(r['reference_id'])] = (r.get('citation', ''), r.get('year', ''))
+            meta[int(r.get('reference_id') or r['ref_id'])] = (r.get('citation', ''), r.get('year', ''))
     ocr = {}
     if o.ocr_dir:
         # languages.tsv (ocr_pages.py): ref_id, page, lang. OCR files without it are recorded as eng.
