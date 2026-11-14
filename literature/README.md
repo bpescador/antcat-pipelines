@@ -83,6 +83,26 @@ python3 literature/build_library.py --library ~/antcat/literature --pdf-dir ~/an
 `ref_languages.tsv` in the OCR folder records the language chosen for each reference and why; check it
 when a page reads badly. About 1.3 s a page on the workspace's 2 CPUs (13 Nov 2026).
 
+**Best run natively on the Mac** (Terminal, not the agent's shell VM): no 180 s limit, all cores, local disk.
+Once: `brew install tesseract tesseract-lang poppler`. Then:
+
+```
+cd ~/antcat/antcat-pipelines && caffeinate -i python3 literature/ocr_pages.py --pdf-dir ~/antcat/literature/pdf \
+    --out ~/antcat/literature/ocr --jobs 8 > ~/antcat/literature/ocr_run.log 2>&1 && \
+python3 literature/build_library.py --library ~/antcat/literature --pdf-dir ~/antcat/literature/pdf \
+    --ocr-dir ~/antcat/literature/ocr --skip-existing
+```
+
+## The index database
+
+`library.sqlite` is only an index: the PDFs and the page files are the library, and the index can be rebuilt
+from them (`--db NEW --refs-tsv refs.tsv`, all references, then move NEW into place). The agent's shell VM sees
+the Mac folder as a shared mount on which SQLite's normal locking fails; there, build into a local file with
+`--db $HOME/libdb/library.sqlite` and copy it in after each step (copy to `.tmp`, then `mv`). Never write it on
+the shared folder with `--shared-folder` in steps that can be cut off: on 14 Nov 2026 a step stopped by the
+180 s limit left that index corrupt, and it was rebuilt (3,598 references, 103,962 pages; the corrupt copy is
+in `_to_delete/`).
+
 ## Scope
 
 The 23,142 species-group names in the 11 Nov 2026 names export were described in 4,114 references
