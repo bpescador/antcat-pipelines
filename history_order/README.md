@@ -27,6 +27,8 @@ Canonical order of history lines on AntCat protonym pages, derived from producti
 | `convert_unavailable_infrasubspecific.rb` | server | MODE=write | Converts them to UnavailableInfrasubspecificName and DeclaredUnavailableInfrasubspecificName (AntCat #1597), same method as the status block. |
 | `remaining_kinds_survey.rb` | server | no | Shapes of the kinds with no structured type before AntCat #1598: misspelling, material referred, first available use, unidentifiable / incertae sedis, also described as new, emendation, unnecessary replacement name. |
 | `convert_six_kinds.rb` | server | MODE=write | Converts six of them (AntCat #1598): MisspelledAs, AlsoDescribedAsNew, FirstAvailableUseUnavailableInfrasubspecific, MaterialReferredTo, MaterialOfUnavailableNameReferredHere, IncertaeSedisIn. KINDS=misspelled,also,first_use,material_to,material_here,incertae. {prott}/{prottac} objects become the terminal taxon if the name shown is the same. |
+| `higher_names_survey.rb` | server | no | Shapes of the free-text history of genus- and family-group protonyms (subject, connector, object, citation form). |
+| `convert_higher_names.rb` | server | MODE=write | Converts genus- and family-group lines (AntCat #1614): PlacementIn, PlacementIncertaeSedisIn, AsGenus, AsRankOf, AsSynonymOf. The subject must render as the protonym's terminal taxon. KINDS=placement,incertae,as_genus,as_rank,as_synonym. |
 
 The Python scripts use fixed paths under `/tmp/ho/`; copy the export there first (`cp history_lines_<date>.tsv /tmp/ho/lines.tsv`).
 
@@ -55,3 +57,7 @@ Production: dump `antcat-manual-pre-small-kinds-20261108-1240`; pass 1 check a2d
 ## Six kinds (2026-11-08)
 
 Production: AntCat #1598 deployed (45f8e86), dump `antcat-manual-pre-six-kinds-20261108-1525`; check b469ceaf (3,021 lines, 0 errors), canary 3a75fdf6 (156505), write 45dd7926: 2,601 protonyms, 3,018 lines (misspelled 1,208, first use 531, incertae sedis 393, material referred to 374, material referred here 164, also described as new 348), 742 extra items, 265 held (nothing convertible), 0 errors. Emendation and Unnecessary replacement name skipped (Brian). Structured share after the run: 95.2% (196,824 structured, 9,823 free text).
+
+## Genus- and family-group names (2026-11-14)
+
+AntCat #1614 (merged 611dfea; Brian: keep Bolton's wording, subject first). Staging check 97f7038a, write f2ea815c: 1,106 protonyms, 3,623 lines (placement 1,696, as_synonym 1,089, as_rank 340, as_genus 316, incertae 182), 7,739 extra items, 149 held, 0 errors; staging share 97.1%. Held: citation notes ("[provisional]", "[{tax N}]"), "subsequent authors", "all authors", other wording. Production: see claude/HISTORY_ORDER.md in the AntCat project.
