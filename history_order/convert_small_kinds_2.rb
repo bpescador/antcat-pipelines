@@ -171,6 +171,7 @@ def plan_text(text, kinds = KINDS)
     attrs = kd[:attrs].(m, obj)
     if (tv = attrs[:text_value])
       return 'name invalid' unless tv.length <= HistoryItem::TEXT_VALUE_MAX_LENGTH && tv.match?(HistoryItem::VALID_TEXT_VALUE_REGEX)
+      return 'name invalid' unless tv.match?(HistoryItem::NOMEN_NUDUM_NAME_REGEX)
     end
     return { kind: kind, m: m, key: (kd[:key].(m, obj) if kd[:grouped]), obj: obj, cites: cites, attrs: attrs }
   end
