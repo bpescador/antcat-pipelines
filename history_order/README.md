@@ -29,6 +29,9 @@ Canonical order of history lines on AntCat protonym pages, derived from producti
 | `convert_six_kinds.rb` | server | MODE=write | Converts six of them (AntCat #1598): MisspelledAs, AlsoDescribedAsNew, FirstAvailableUseUnavailableInfrasubspecific, MaterialReferredTo, MaterialOfUnavailableNameReferredHere, IncertaeSedisIn. KINDS=misspelled,also,first_use,material_to,material_here,incertae. {prott}/{prottac} objects become the terminal taxon if the name shown is the same. |
 | `higher_names_survey.rb` | server | no | Shapes of the free-text history of genus- and family-group protonyms (subject, connector, object, citation form). |
 | `convert_higher_names.rb` | server | MODE=write | Converts genus- and family-group lines (AntCat #1614): PlacementIn, PlacementIncertaeSedisIn, AsGenus, AsRankOf, AsSynonymOf. The subject must render as the protonym's terminal taxon. KINDS=placement,incertae,as_genus,as_rank,as_synonym. |
+| `small_kinds2_survey.rb` | server | no | Shapes of the small species-group kinds left on 14 Nov (unresolved homonyms, nomen nudum lines, unnecessary replacement names, duplicated in, subgenus indeterminate, notes on Combination in and designations). |
+| `convert_small_kinds_2.rb` | server | MODE=write | Converts them (AntCat #1618, #1619) and the Combination in / designation lines held only for a note. Holds a protonym if a changed line would differ in anything but a final full stop or citation order. |
+| `history_next_survey.rb` | server | no | Sizes new free text by month, citation notes, and the species-group leftovers. |
 
 The Python scripts use fixed paths under `/tmp/ho/`; copy the export there first (`cp history_lines_<date>.tsv /tmp/ho/lines.tsv`).
 
@@ -65,3 +68,7 @@ AntCat #1614 (merged 611dfea; Brian: keep Bolton's wording, subject first). Stag
 ## Citation notes (2026-11-14)
 
 AntCat #1616 (merged 6355519): `history_items.citation_note`, a note printed after a citation ("[Myrmicidae]", "[provisional]", "(see note in bibliography)"), kept as printed. `convert_higher_names.rb` and `convert_status_block.rb` keep such notes (commit 559de2d). Production: dump `antcat-manual-pre-citation-notes-20261114-1001`; higher names check ec24cf0f, canary e1d6c7c4, write e2a09e60 (688 lines); status block check 160f27e5, canary 7944d6ea, write dde62ad4 (518 lines); 0 errors; 2,074 items with a note; structured share 97.8%. `history_next_survey.rb` sized the options (new free text, notes, species-group leftovers).
+
+## Small species-group kinds (2026-11-14)
+
+AntCat #1618 and #1619. Production: dump `antcat-manual-pre-small-kinds-2-20261114-1451`; check 7c863e41, canary b94dd807 (no-op: nothing convertible), write cb544094: 572 lines, 0 errors; structured share 98.1%.
