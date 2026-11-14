@@ -44,6 +44,26 @@ A page's text comes from the PDF's text layer, else an existing OCR file (`<ref_
 numbers, languages in `languages.tsv`), else new OCR with `--ocr`. Pages with none are recorded as missing; a
 later run fills them and keeps everything already done. Re-adding a reference is safe.
 
+## Fetching the PDFs from AntCat
+
+`pdfs/stream_reference_pdfs.rb` (on antcat-prod, read only) sends the PDFs of a list of reference ids from
+AntCat's S3 bucket straight off the server as one stream; `pdfs/extract_streamed_pdfs.py` on the Mac writes
+them to a folder. Nothing is written on the server, so its 24 GB disk does not limit the batch (13 Nov 2026:
+the older `fetch_reference_pdfs.rb` writes to `tmp/` first and took the disk from 62% to 82% for 356 PDFs).
+
+```
+# Mac: ids file and script to the server
+scp pdfs/stream_reference_pdfs.rb IDS.txt antcat:/var/www/antcat-2/tmp/ && \
+ssh antcat 'chmod 644 /var/www/antcat-2/tmp/stream_reference_pdfs.rb /var/www/antcat-2/tmp/IDS.txt'
+# Mac: the fetch, one command; per-id log on stderr
+caffeinate -i ssh antcat 'docker exec -u antcat -w /app -e RAILS_ENV=production -e ONLY_FILE=tmp/IDS.txt \
+  antcat-app bundle exec rails runner tmp/stream_reference_pdfs.rb' 2> stream.log \
+  | python3 pdfs/extract_streamed_pdfs.py ~/antcat/literature/incoming/DIR
+```
+
+Then check every file's size against `stream.log`, set aside any marked INCOMPLETE (fetch them again), add the
+folder with `build_library.py --pdf-dir`, and remove the two files from the server's `tmp/`.
+
 ## OCR of scanned pages
 
 OCR languages: the Mac's shell VM has English only; the cloud workspace has German, French, Italian,
