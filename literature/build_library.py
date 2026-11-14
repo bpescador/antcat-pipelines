@@ -23,7 +23,7 @@ Usage (run where the files are; the AntCat reference id is the part of the PDF n
       [--refs-tsv spelling_evidence_refs.tsv] [--ocr --lang deu+fra+ita+eng] [--only ID,ID]
   python3 build_library.py --library ~/antcat/literature --pdf FILE --ref-id 126251 --citation "Karavaiev, 1926f" --year 1926
 """
-import argparse, csv, datetime, glob, hashlib, os, re, shutil, sqlite3, subprocess, sys, tempfile
+import argparse, csv, datetime, glob, hashlib, os, re, shutil, sqlite3, subprocess, sys, tempfile, time
 
 MIN_TEXT_CHARS = 60  # a page with less text than this in its text layer is treated as a scan
 LINE_BREAK_HYPHEN = re.compile(r'(\w)-[ \t]*\n\s*(\w)')  # "crassi-\nspina" -> "crassispina" (index only)
@@ -145,7 +145,12 @@ def main():
     a.add_argument('--timeout', type=int, default=120)
     a.add_argument('--only', help='comma-separated reference ids')
     a.add_argument('--copy', action='store_true', help='copy PDFs instead of hard-linking them')
+    a.add_argument('--skip-existing', action='store_true',
+                   help='skip references already in the library with no missing pages (unless --ocr)')
+    a.add_argument('--max-seconds', type=int, default=0,
+                   help='stop cleanly, between references, after this many seconds (the Mac shell allows 180 s a call)')
     o = a.parse_args()
+    started = time.time()
     lib = os.path.expanduser(o.library)
     os.makedirs(lib, exist_ok=True)
     db = sqlite3.connect(os.path.join(lib, 'library.sqlite'))
@@ -177,9 +182,16 @@ def main():
                 jobs.append((int(m.group(1)), p))
     only = {int(x) for x in o.only.split(',')} if o.only else None
     totals = {'refs': 0, 'text layer': 0, 'ocr': 0, 'missing': 0}
+    done = {r: m for r, m in db.execute('SELECT ref_id, missing_pages FROM refs')}
+    stopped = False
     for ref_id, pdf in jobs:
         if only and ref_id not in only:
             continue
+        if o.skip_existing and ref_id in done and (done[ref_id] == 0 or not o.ocr):
+            continue
+        if o.max_seconds and time.time() - started > o.max_seconds:
+            stopped = True
+            break
         cit, yr = meta.get(ref_id, ('', ''))
         c = add_reference(db, lib, ref_id, pdf, o.citation or cit, o.year or yr, ocr.get(ref_id, {}),
                           o.ocr, o.lang, o.timeout, not o.copy)
@@ -190,7 +202,7 @@ def main():
         print(f'{ref_id}\t{os.path.basename(pdf)}\ttext layer {c["text layer"]}\tocr {c["ocr"]}\tmissing {c["missing"]}', flush=True)
     write_refs_tsv(db, lib)
     n_refs, n_pages = db.execute('SELECT COUNT(*), SUM(pages) FROM refs').fetchone()
-    print(f'this run: {totals}')
+    print(f'this run: {totals}' + ('; stopped at --max-seconds, run again to continue' if stopped else ''))
     print(f'library: {n_refs} references, {n_pages or 0} pages; {lib}')
 
 
