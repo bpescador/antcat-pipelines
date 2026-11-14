@@ -28,7 +28,8 @@ def main():
         return
     if not o.query:
         sys.exit('give a query or --page')
-    db = sqlite3.connect(os.path.join(lib, 'library.sqlite'))
+    # read only and immutable: no locks, which the shared Mac folder does not support (build_library.py)
+    db = sqlite3.connect(f"file:{os.path.join(lib, 'library.sqlite')}?mode=ro&immutable=1", uri=True)
     sql = ("SELECT f.ref_id, f.page, r.citation, p.method, snippet(pages_fts, 0, '[', ']', ' ... ', 12) "
            "FROM pages_fts f JOIN refs r ON r.ref_id = f.ref_id JOIN pages p ON p.ref_id = f.ref_id AND p.page = f.page "
            "WHERE pages_fts MATCH ?")

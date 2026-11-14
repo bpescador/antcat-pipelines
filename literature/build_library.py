@@ -149,6 +149,10 @@ def main():
     lib = os.path.expanduser(o.library)
     os.makedirs(lib, exist_ok=True)
     db = sqlite3.connect(os.path.join(lib, 'library.sqlite'))
+    # The Mac folder, as the shell VM sees it, is a shared mount on which SQLite's default locking and
+    # rollback journal fail ("disk I/O error", 13 Nov 2026): one writer, journal kept in memory.
+    db.execute('PRAGMA locking_mode=EXCLUSIVE')
+    db.execute('PRAGMA journal_mode=MEMORY')
     db.executescript(SCHEMA)
 
     meta = {}
