@@ -61,3 +61,7 @@ Production: AntCat #1598 deployed (45f8e86), dump `antcat-manual-pre-six-kinds-2
 ## Genus- and family-group names (2026-11-14)
 
 AntCat #1614 (merged 611dfea; Brian: keep Bolton's wording, subject first). Staging check 97f7038a, write f2ea815c: 1,106 protonyms, 3,623 lines (placement 1,696, as_synonym 1,089, as_rank 340, as_genus 316, incertae 182), 7,739 extra items, 149 held, 0 errors; staging share 97.1%. Held: citation notes ("[provisional]", "[{tax N}]"), "subsequent authors", "all authors", other wording. Production: see claude/HISTORY_ORDER.md in the AntCat project.
+
+## Citation notes (2026-11-14)
+
+AntCat #1616 (merged 6355519): `history_items.citation_note`, a note printed after a citation ("[Myrmicidae]", "[provisional]", "(see note in bibliography)"), kept as printed. `convert_higher_names.rb` and `convert_status_block.rb` keep such notes (commit 559de2d). Production: dump `antcat-manual-pre-citation-notes-20261114-1001`; higher names check ec24cf0f, canary e1d6c7c4, write e2a09e60 (688 lines); status block check 160f27e5, canary 7944d6ea, write dde62ad4 (518 lines); 0 errors; 2,074 items with a note; structured share 97.8%. `history_next_survey.rb` sized the options (new free text, notes, species-group leftovers).
