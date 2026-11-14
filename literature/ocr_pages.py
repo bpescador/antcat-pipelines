@@ -44,6 +44,19 @@ COMMON_WORDS = {
 }
 MIN_WORDS_TO_DECIDE = 40
 MIN_SHARE_TO_DECIDE = 0.03
+# OSD script -> (tesseract languages, letters of that script). Species names stay in Latin letters, hence +eng.
+NON_LATIN = {
+    'Cyrillic': ('rus+eng', r'[Ѐ-ӿ]'),
+    'Japanese': ('jpn+eng', r'[぀-ヿ一-鿿]'),
+    'Han': ('chi_sim+chi_tra+eng', r'[一-鿿]'),
+    'HanS': ('chi_sim+eng', r'[一-鿿]'),
+    'HanT': ('chi_tra+eng', r'[一-鿿]'),
+    'Hangul': ('kor+eng', r'[가-힯]'),
+}
+# Share of letters in the detected script. Measured 13 Nov 2026: Radchenko 1995h 0.81 (Cyrillic), Azuma 1951
+# 0.10 to 0.14 (Japanese; one kanji is a word, the Latin names have many letters), false Cyrillic on Bingham
+# 1903 and Borgmeier 1957a 0.00 and 0.02.
+MIN_SCRIPT_SHARE = 0.05
 
 
 def render(pdf, page, tmp, timeout):
@@ -81,6 +94,11 @@ def language_of(text):
     return (lang, share[lang]) if share[lang] >= MIN_SHARE_TO_DECIDE else (None, share[lang])
 
 
+def script_share(text, chars):
+    letters = [c for c in text if c.isalpha()]
+    return sum(1 for c in letters if re.match(chars, c)) / len(letters) if len(letters) >= MIN_WORDS_TO_DECIDE else 0.0
+
+
 def choose_language(ref_id, pdf, pages, timeout):
     """pages: the scanned page numbers of this reference. Returns (ref_id, script, lang, how)."""
     # Skip a title page or cover when there is more than one page; look at up to three pages.
@@ -91,14 +109,13 @@ def choose_language(ref_id, pdf, pages, timeout):
             png = render(pdf, p, tmp, timeout)
             script = script_of(png, timeout)
             scripts.append(script)
-            if script == 'Cyrillic':
-                return ref_id, script, 'rus+eng', f'OSD Cyrillic on p{p}'
-            if script in ('Han', 'HanS', 'HanT'):
-                return ref_id, script, 'chi_sim+chi_tra+eng', f'OSD {script} on p{p}'
-            if script == 'Japanese':
-                return ref_id, script, 'jpn+eng', f'OSD Japanese on p{p}'
-            if script == 'Hangul':
-                return ref_id, script, 'kor+eng', f'OSD Hangul on p{p}'
+            # OSD alone misreads some plates and poor scans (Bingham 1903 and Borgmeier 1957a came out as
+            # Cyrillic, 13 Nov 2026): a non-Latin script counts only if OCR in it gives mostly its letters.
+            if script in NON_LATIN:
+                lang, chars = NON_LATIN[script]
+                share = script_share(tesseract(png, lang, timeout), chars)
+                if share >= MIN_SCRIPT_SHARE:
+                    return ref_id, script, lang, f'OSD {script} on p{p}, {share:.2f} of letters in it'
             lang, share = language_of(tesseract(png, DETECT_LANGS, timeout))
             if lang:
                 return ref_id, script or 'Latin', lang, f'common words {share:.2f} on p{p}'
