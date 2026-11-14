@@ -62,6 +62,7 @@ end
 
 D = History::Definitions
 F = Taxt::StandardHistoryItemFormats
+abort 'PR #1616 is not deployed (no citation_note).' unless HistoryItem.column_names.include?('citation_note')
 KIND_DEFS = {
   'status' => { label: 'Status as species', type: D::STATUS_AS_SPECIES, object: false },
   'junior' => { label: 'Junior synonym of', type: D::JUNIOR_SYNONYM_OF, object: true },
@@ -69,8 +70,16 @@ KIND_DEFS = {
   'subspecies' => { label: 'Subspecies of', type: D::SUBSPECIES_OF, object: true }
 }
 KINDS = (ENV['KINDS']&.split(',') || KIND_DEFS.keys).tap { |k| raise "unknown KINDS #{k}" unless (k - KIND_DEFS.keys).empty? }
-LINE_RE = /\A(?<label>Status as species|Junior synonym of|Senior synonym of|Subspecies of)(?: \{(?<tag>prott|prottac|tax|taxac) (?<oid>\d+)\})?: (?<cites>#{F::CITATIONS})(?<stop>\.?)\z/
-CITE_RE = /\{ref (?<rid>\d+)\}: (?<pages>#{F::PAGINATION_MANY})/
+# A note printed right after a citation ("[Myrmicidae]", "[provisional]", "(see note in bibliography)") goes to
+# the item's citation_note (AntCat #1616), so the page stays the same.
+NOTE = '(?: (?<note>\\[[^\\[\\];]*\\]|\\([^();]*\\)))?'
+NOTE_ANON = '(?: (?:\\[[^\\[\\];]*\\]|\\([^();]*\\)))?'
+CITE_ANON = "\\{ref \\d+\\}: #{F::PAGINATION_MANY}#{NOTE_ANON}"
+CITATIONS_WITH_NOTES = "#{CITE_ANON}(?:; #{CITE_ANON})*"
+CITE_RE = /\{ref (?<rid>\d+)\}: (?<pages>#{F::PAGINATION_MANY})#{NOTE}/
+NOTE_OK = ->(note) { note.nil? || (note.length <= HistoryItem::CITATION_NOTE_MAX_LENGTH && note.match?(HistoryItem::VALID_CITATION_NOTE_REGEX)) }
+def cite_text(rid, pages, note) = "{ref #{rid}}: #{pages}#{" #{note}" if note}"
+LINE_RE = /\A(?<label>Status as species|Junior synonym of|Senior synonym of|Subspecies of)(?: \{(?<tag>prott|prottac|tax|taxac) (?<oid>\d+)\})?: (?<cites>#{CITATIONS_WITH_NOTES})(?<stop>\.?)\z/
 LABEL_KIND = KIND_DEFS.to_h { |k, d| [d[:label], k] }
 
 bot = User.find_by!(name: 'AntCatBot')
@@ -93,7 +102,7 @@ def parse(text)
   cites = m[:cites].to_enum(:scan, CITE_RE).map { Regexp.last_match }
   return unless cites.map(&:to_s).join('; ') == m[:cites]
   { kind: kind, label: m[:label], tag: m[:tag], oid: m[:oid]&.to_i, stop: m[:stop],
-    cites: cites.map { |c| [c[:rid].to_i, c[:pages]] } }
+    cites: cites.map { |c| [c[:rid].to_i, c[:pages], c[:note]] } }
 end
 
 # The structured object for a parsed line: [object_protonym_id, force_author_citation], or a reason string.
@@ -124,7 +133,7 @@ end
 
 def line_text(kind, object_id, flag, cites)
   sorted = cites.each_with_index.sort_by { |(rid, _), i| [ref_year(rid) || -1, i] }.map(&:first)
-  "#{prefix(kind, object_id, flag)}: #{sorted.map { |rid, pages| "{ref #{rid}}: #{pages}" }.join('; ')}."
+  "#{prefix(kind, object_id, flag)}: #{sorted.map { |rid, pages, note| cite_text(rid, pages, note) }.join('; ')}."
 end
 
 def plan_line(hi)
@@ -136,6 +145,7 @@ def plan_line(hi)
   object_id, flag = obj
   return 'force_author_citation not allowed for this type' if flag && !D::TYPE_DEFINITIONS[KIND_DEFS[p[:kind]][:type]][:allow_force_author_citation]
   return 'reference missing' unless p[:cites].all? { |rid, _| ref_year(rid) }
+  return 'citation note invalid' unless p[:cites].all? { |_, _, note| NOTE_OK.(note) }
   return 'pages invalid' unless p[:cites].all? do |_, pages|
     pages.length <= HistoryItem::PAGES_MAX_LENGTH && pages.match?(HistoryItem::VALID_PAGES_REGEX)
   end
@@ -205,13 +215,14 @@ protonym_ids.each do |pid|
 
       plans.each do |item_id, plan|
         hi = HistoryItem.find(item_id)
-        (rid, pages), *rest = plan[:cites]
+        (rid, pages, note), *rest = plan[:cites]
         hi.update!(type: KIND_DEFS[plan[:kind]][:type], taxt: nil, force_author_citation: plan[:flag],
-                   object_protonym_id: plan[:object_id], reference_id: rid, pages: pages)
+                   object_protonym_id: plan[:object_id], reference_id: rid, pages: pages, citation_note: note)
         lines += 1
-        rest.each_with_index do |(r2, p2), k|
+        rest.each_with_index do |(r2, p2, n2), k|
           extra = protonym.history_items.create!(type: KIND_DEFS[plan[:kind]][:type], rank: hi.rank,
-            force_author_citation: plan[:flag], object_protonym_id: plan[:object_id], reference_id: r2, pages: p2)
+            force_author_citation: plan[:flag], object_protonym_id: plan[:object_id], reference_id: r2, pages: p2,
+            citation_note: n2)
           PaperTrail.request(enabled: false) { extra.insert_at(hi.reload.position + k + 1) }
           items += 1
         end

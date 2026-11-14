@@ -46,11 +46,20 @@ EDIT_SUMMARY = '[automated] Convert free-text history lines to structured histor
 
 D = History::Definitions
 abort 'PR #1614 is not deployed (no PlacementIn type).' unless D::TYPE_DEFINITIONS.key?('PlacementIn')
+abort 'PR #1616 is not deployed (no citation_note).' unless HistoryItem.column_names.include?('citation_note')
 abort 'PR #1593 is not deployed.' unless HistoryPresenter.private_method_defined?(:year_then_editor_sort_key)
 
 F = Taxt::StandardHistoryItemFormats
-CITES = F::CITATIONS
-CITE_RE = /\{ref (?<rid>\d+)\}: (?<pages>#{F::PAGINATION_MANY})/
+# A note printed right after a citation ("[Myrmicidae]", "[provisional]", "(see note in bibliography)") goes to
+# the item's citation_note (AntCat #1616), so the page stays the same.
+NOTE = '(?: (?<note>\\[[^\\[\\];]*\\]|\\([^();]*\\)))?'
+NOTE_ANON = '(?: (?:\\[[^\\[\\];]*\\]|\\([^();]*\\)))?'
+CITE_ANON = "\\{ref \\d+\\}: #{F::PAGINATION_MANY}#{NOTE_ANON}"
+CITATIONS_WITH_NOTES = "#{CITE_ANON}(?:; #{CITE_ANON})*"
+CITE_RE = /\{ref (?<rid>\d+)\}: (?<pages>#{F::PAGINATION_MANY})#{NOTE}/
+NOTE_OK = ->(note) { note.nil? || (note.length <= HistoryItem::CITATION_NOTE_MAX_LENGTH && note.match?(HistoryItem::VALID_CITATION_NOTE_REGEX)) }
+def cite_text(rid, pages, note) = "{ref #{rid}}: #{pages}#{" #{note}" if note}"
+CITES = CITATIONS_WITH_NOTES
 SUBJ = '\{(?<stag>tax|taxac|prott|prottac) (?<sid>\d+)\}'
 OBJ_TAG = '\{(?:tax|taxac|unmissing|pro|prott) [^{}]+\}'
 PLACEMENT = "#{OBJ_TAG}(?:, #{OBJ_TAG})*(?: genus group)?"
@@ -113,13 +122,13 @@ def cites_of(text)
   return [] if text.nil?
   list = text.to_enum(:scan, CITE_RE).map { Regexp.last_match }
   return if list.map(&:to_s).join('; ') != text
-  list.map { |c| [c[:rid].to_i, c[:pages]] }
+  list.map { |c| [c[:rid].to_i, c[:pages], c[:note]] }
 end
 
 def body(cites)
   return nil if cites.empty?
   cites.each_with_index.sort_by { |(rid, _), i| [ref_year(rid) || -1, i] }.map(&:first).
-    map { |rid, pages| "{ref #{rid}}: #{pages}" }.join('; ')
+    map { |rid, pages, note| cite_text(rid, pages, note) }.join('; ')
 end
 
 # Parses a line of protonym `pid`. Returns nil (not ours), a reason (held), or a plan hash.
@@ -141,6 +150,7 @@ def plan_text(text, pid, kinds = KINDS)
       obj = m[:oid].to_i
     end
     return 'reference missing' unless cites.all? { |rid, _| ref_year(rid) }
+    return 'citation note invalid' unless cites.all? { |_, _, note| NOTE_OK.(note) }
     return 'pages invalid' unless cites.all? do |_, pages|
       pages.length <= HistoryItem::PAGES_MAX_LENGTH && pages.match?(HistoryItem::VALID_PAGES_REGEX)
     end
@@ -212,12 +222,12 @@ protonym_ids.each do |pid|
       plans.each do |item_id, plan|
         kd = KIND_DEFS[plan[:kind]]
         hi = HistoryItem.find(item_id)
-        (rid, pages), *rest = plan[:cites]
-        hi.update!({ type: kd[:type], taxt: nil, reference_id: rid, pages: pages }.merge(plan[:attrs]))
+        (rid, pages, note), *rest = plan[:cites]
+        hi.update!({ type: kd[:type], taxt: nil, reference_id: rid, pages: pages, citation_note: note }.merge(plan[:attrs]))
         lines += 1
         per_kind[plan[:kind]] += 1
-        rest.each_with_index do |(r2, p2), k|
-          extra = protonym.history_items.create!({ type: kd[:type], rank: hi.rank, reference_id: r2, pages: p2 }.merge(plan[:attrs]))
+        rest.each_with_index do |(r2, p2, n2), k|
+          extra = protonym.history_items.create!({ type: kd[:type], rank: hi.rank, reference_id: r2, pages: p2, citation_note: n2 }.merge(plan[:attrs]))
           PaperTrail.request(enabled: false) { extra.insert_at(hi.reload.position + k + 1) }
           items += 1
         end
