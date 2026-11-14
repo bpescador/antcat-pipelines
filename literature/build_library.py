@@ -15,8 +15,10 @@ Layout of the library folder (keep it outside git: the texts are copyrighted, an
   library.sqlite              tables refs and pages, and pages_fts (FTS5) for searching every page
 
 A page's text comes from, in order: the PDF's own text layer; an existing OCR file for that page
-(--ocr-dir, files <ref_id>_p<page>.txt); new OCR (--ocr, tesseract with --lang). Pages with none of
-these are recorded as missing, so a later run with --ocr can fill them.
+(--ocr-dir, files <ref_id>_p<page>.txt, with their languages in languages.tsv as ocr_pages.py writes
+them); new OCR (--ocr, tesseract with --lang). Pages with none of these are recorded as missing, so a
+later run can fill them. For scans in other languages use ocr_pages.py, which picks the language per
+reference, where tesseract has the languages, then import its folder here with --ocr-dir.
 
 Usage (run where the files are; the AntCat reference id is the part of the PDF name before "__"):
   python3 build_library.py --library ~/antcat/literature --pdf-dir DIR [--ocr-dir DIR] \
@@ -72,7 +74,7 @@ def ocr_page(path, page, lang, timeout):
 
 
 def place_pdf(src, dst, link):
-    if os.path.exists(dst) and md5(dst) == md5(src):
+    if os.path.exists(dst) and (os.path.samefile(src, dst) or md5(dst) == md5(src)):
         return
     if os.path.exists(dst):
         sys.exit(f'{dst} exists with different content; not overwriting (compare {src})')
@@ -100,7 +102,8 @@ def add_reference(db, lib, ref_id, pdf, citation, year, ocr_files, do_ocr, lang,
         if len(text.strip()) < MIN_TEXT_CHARS:
             path = os.path.join(page_dir, f'p{i:04d}.txt')
             if i in ocr_files:
-                text, method, used_lang = open(ocr_files[i], encoding='utf-8', errors='replace').read(), 'ocr', 'eng'
+                path_i, file_lang = ocr_files[i]
+                text, method, used_lang = open(path_i, encoding='utf-8', errors='replace').read(), 'ocr', file_lang
             elif old.get(i, ('',))[0] == 'ocr' and os.path.exists(path):
                 text, method, used_lang = open(path, encoding='utf-8').read(), 'ocr', old[i][1]
             elif do_ocr:
@@ -146,7 +149,8 @@ def main():
     a.add_argument('--only', help='comma-separated reference ids')
     a.add_argument('--copy', action='store_true', help='copy PDFs instead of hard-linking them')
     a.add_argument('--skip-existing', action='store_true',
-                   help='skip references already in the library with no missing pages (unless --ocr)')
+                   help='skip references already in the library, unless they have missing pages that --ocr or '
+                        '--ocr-dir can fill')
     a.add_argument('--max-seconds', type=int, default=0,
                    help='stop cleanly, between references, after this many seconds (the Mac shell allows 180 s a call)')
     o = a.parse_args()
@@ -166,10 +170,17 @@ def main():
             meta[int(r['reference_id'])] = (r.get('citation', ''), r.get('year', ''))
     ocr = {}
     if o.ocr_dir:
+        # languages.tsv (ocr_pages.py): ref_id, page, lang. OCR files without it are recorded as eng.
+        file_langs = {}
+        lang_tsv = os.path.join(o.ocr_dir, 'languages.tsv')
+        if os.path.exists(lang_tsv):
+            for r in csv.reader(open(lang_tsv, encoding='utf-8'), delimiter='\t'):
+                file_langs[(int(r[0]), int(r[1]))] = r[2]
         for p in glob.glob(os.path.join(o.ocr_dir, '*_p*.txt')):
             m = re.match(r'(\d+)_p(\d+)\.txt$', os.path.basename(p))
             if m:
-                ocr.setdefault(int(m.group(1)), {})[int(m.group(2))] = p
+                key = (int(m.group(1)), int(m.group(2)))
+                ocr.setdefault(key[0], {})[key[1]] = (p, file_langs.get(key, 'eng'))
     jobs = []
     if o.pdf:
         if not o.ref_id:
@@ -177,7 +188,8 @@ def main():
         jobs.append((o.ref_id, o.pdf))
     if o.pdf_dir:
         for p in sorted(glob.glob(os.path.join(o.pdf_dir, '*.pdf'))):
-            m = re.match(r'(\d+)__', os.path.basename(p))
+            # <ref_id>__<name>.pdf as fetched, or <ref_id>.pdf as kept in the library's own pdf/ folder
+            m = re.match(r'(\d+)(?:__|\.pdf$)', os.path.basename(p))
             if m:
                 jobs.append((int(m.group(1)), p))
     only = {int(x) for x in o.only.split(',')} if o.only else None
@@ -187,7 +199,9 @@ def main():
     for ref_id, pdf in jobs:
         if only and ref_id not in only:
             continue
-        if o.skip_existing and ref_id in done and (done[ref_id] == 0 or not o.ocr):
+        # An existing reference is redone only when it has missing pages and this run can fill them:
+        # --ocr, or OCR files for it in --ocr-dir.
+        if o.skip_existing and ref_id in done and (done[ref_id] == 0 or not (o.ocr or ref_id in ocr)):
             continue
         if o.max_seconds and time.time() - started > o.max_seconds:
             stopped = True

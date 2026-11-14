@@ -41,11 +41,27 @@ python3 literature/build_library.py --library ~/antcat/literature --pdf FILE --r
 
 PDF names start with the AntCat reference id and `__` (as `pdfs/fetch_reference_pdfs.rb` writes them).
 A page's text comes from the PDF's text layer, else an existing OCR file (`<ref_id>_p<page>.txt`, PDF page
-numbers), else new OCR with `--ocr`. Pages with none are recorded as missing; a later `--ocr` run fills them
-and keeps everything already done. Re-adding a reference is safe.
+numbers, languages in `languages.tsv`), else new OCR with `--ocr`. Pages with none are recorded as missing; a
+later run fills them and keeps everything already done. Re-adding a reference is safe.
+
+## OCR of scanned pages
 
 OCR languages: the Mac's shell VM has English only; the cloud workspace has German, French, Italian,
 Spanish, Portuguese, Dutch, Polish and Russian (Ukrainian Cyrillic reads acceptably as Russian). No Latin.
+So scans are OCR'd in the workspace with `ocr_pages.py`, which picks the language once per reference
+(Cyrillic script by tesseract's script detection, else the language whose common words win on a sample
+page), then imported on the Mac:
+
+```
+# workspace: PDFs named <ref_id>.pdf; resumable, skips pages already done
+python3 literature/ocr_pages.py --pdf-dir PDFS --out OCR --jobs 2
+# Mac: import, in steps that fit the 180 s shell limit
+python3 literature/build_library.py --library ~/antcat/literature --pdf-dir ~/antcat/literature/pdf \
+    --ocr-dir OCR --skip-existing --max-seconds 150
+```
+
+`ref_languages.tsv` in the OCR folder records the language chosen for each reference and why; check it
+when a page reads badly. About 1.3 s a page on the workspace's 2 CPUs (13 Nov 2026).
 
 ## Scope
 
