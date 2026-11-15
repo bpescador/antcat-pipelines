@@ -49,6 +49,11 @@ EDGE_WORDS = {'is', 'i', 'island', 'islands', 'isl', 'mts', 'mt', 'mount', 'moun
               'region', 'district', 'lake', 'isla', 'ilha', 'ile', 'pulau', 'dept', 'department'}
 # place names read with the article in English: "Formed from the Philippines"
 WITH_ARTICLE = {'Philippines', 'Bahamas', 'Comoros', 'Seychelles', 'Netherlands', 'Maldives', 'Moluccas', 'Andes'}
+# islands that are not themselves countries or states take "on" (Brian, 14 Nov 20:43: "is on Sulawesi"); countries
+# and states that are islands (Cuba, Madagascar, Taiwan, Tasmania, Hawaii) keep "in"
+ON_ISLANDS = {'Sulawesi', 'Sumatra', 'Borneo', 'Java', 'Ambon', 'Bali', 'Buru', 'Cebu', 'Flores', 'Goram', 'Lombok',
+              'Luzon', 'Mindanao', 'Negros', 'Palawan', 'Panay', 'Sumba', 'Ternate', 'Timor', 'Tahiti', 'Symi',
+              'Aldabra', 'Farquhar', 'Annobon', 'Norfolk', 'Madeira', 'Rotuma', 'Verlaten', 'Hainan', 'Cocos'}
 NOT_A_PLACE = re.compile(r'(cene|aceous|amber|\blate\b|\bearly\b|\bmiddle\b|\bformation\b|\d)', re.I)
 
 
@@ -187,7 +192,8 @@ def main():
         # Brian, 14 Nov 20:32: "The type locality recorded in AntCat is in X" (exact when AntCat records a place
         # within X); the suffix in italics (AntCat #1621 renders <i> in the derivation, nothing else)
         text = (f"Toponym: Formed from {the}{place} with the Latin adjectival suffix <i>{suffix}</i>, "
-                f"'of {the}{place}'. The type locality recorded in AntCat is in {the}{place}.")
+                f"'of {the}{place}'. The type locality recorded in AntCat is {'on' if place in ON_ISLANDS else 'in'} "
+                f"{the}{place}.")
         out.append([r['protonym_id'], r['protonym_name'], r['author_citation'], r['year'], r['locality'], stem,
                     place, suffix, 'held' if reason else 'proposed', reason, '' if reason else text])
         counts['held' if reason else 'proposed'] += 1
