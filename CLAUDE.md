@@ -54,6 +54,10 @@ is the rules of engagement.
 9. **Command blocks handed to Brian**: one machine per block with a
    `# WHERE:` header, and `&&`-chained so a failed step stops the sequence —
    an unchained failed cp has silently produced an incomplete commit twice.
+   Every block that changes a server starts with `test "$(hostname)" =
+   <server> &&`, so in the wrong terminal it does nothing: the `# WHERE:`
+   line is only a comment, and on 14 Nov 2026 a staging block ran in the
+   antcat-prod terminal (harmless that time; the files were already gone).
 10. **When Brian gives an instruction that conflicts with a runbook, say so
    before acting** — the runbooks encode hard-won failures (DOI page leak,
    append-ordering bug, wrong-terminal executions). Don't silently override
