@@ -30,7 +30,8 @@
 #   docker exec -u antcat -w /app -e RAILS_ENV=production -e MODE=check antcat-app \
 #     bundle exec rails runner tmp/write_etymology_sources.rb
 
-require 'csv'
+# No csv: Ruby 3.4 made it a bundled gem and AntCat's Gemfile does not list it, so `require 'csv'` fails under
+# bundle exec (the staging dry run of 14 Nov; export_references.rb has the same note). The input is plain TSV.
 require 'digest'
 
 ActiveRecord::Base.logger = nil
@@ -55,8 +56,14 @@ def clean(value)
   value.to_s.gsub(/[\t\r\n]+/, ' ')
 end
 
-rows = CSV.read(INPUT, col_sep: "\t", headers: true, quote_char: "\u0000")
-abort "Input columns must be #{INPUT_COLUMNS.join(', ')}" unless (INPUT_COLUMNS - rows.headers).empty?
+lines = File.readlines(INPUT, chomp: true, encoding: 'UTF-8').reject(&:empty?)
+header = lines.shift.split("\t", -1)
+abort "Input columns must be #{INPUT_COLUMNS.join(', ')}" unless header == INPUT_COLUMNS
+rows = lines.map do |line|
+  fields = line.split("\t", -1)
+  abort "Input line with #{fields.size} fields: #{line[0, 80]}" unless fields.size == header.size
+  header.zip(fields).to_h
+end
 rows = rows.select { |r| ONLY.include?(r['protonym_id'].to_i) } if ONLY
 rows = rows.first(LIMIT) if LIMIT
 
