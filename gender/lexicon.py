@@ -37,10 +37,12 @@ def kind_of(itype, gen, pos, body, orth=''):
     head = re.sub(r'<[^>]+>', '', body[:600])
     if orth[:1].isupper():
         # a capitalized adjective (Gallicus, Romanus) is an adjective; a capitalized noun is a proper noun
-        if 'adj' in pos or re.fullmatch(r'(\w*a, \w*um|e|is, e|\w*is, \w*e)', itype):
+        if not gen and ('adj' in pos or re.fullmatch(r'(\w*a, \w*um|is, e|\w*is, \w*e)', itype)):
             return 'adjective'
         return 'proper noun'
-    if re.search(r'\bP\. a\.|\bpart\.|\bParticip', head):
+    if re.search(r'\bP\. a\.', head):
+        return 'adjective'  # a participial adjective (minutus 'small') is used as an adjective
+    if re.search(r'\bpart\.|\bParticip', head):
         if 'adj' not in pos:
             return 'participle'
     if 'adj' in pos or re.fullmatch(r'(\w*a, \w*um|e|is, e|\w*is, \w*e)', itype):

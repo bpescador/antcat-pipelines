@@ -87,18 +87,21 @@ def q4(parser, lsj_keys, epithet, locality=''):
     e = fold(epithet)
     if e in re.sub(r'[^a-z ]', ' ', fold(locality)).split():
         return 'held', '', '', '', 'the epithet is a place name of the type locality: noun in apposition or adjective'
-    c = parser.parse(epithet)
-    if rs and not c:
-        return 'latin_proper_noun_pos', 'noun_in_apposition', 'grammatical_form', 'demonstrated', ev(rs)
     pl = place_adjective(epithet, locality)
     if pl:
         return 'place_adjective_pos', 'adjective', 'grammatical_form', 'demonstrated', pl
+    c = parser.parse(epithet)
     gr = lsj_keys.get(e, [])
     gkinds = {r['kind'] for r in gr}
+    if rs and 'adjective' in gkinds:
+        return 'held', '', '', '', f"a proper noun ({rs[0]['headword']}) and a Greek adjective ({gr[0]['headword']}): Rule 1.5"
+    if rs and (not c or c[0] == 'derived-adjective'):
+        return 'latin_proper_noun_pos', 'noun_in_apposition', 'grammatical_form', 'demonstrated', ev(rs)
     if gkinds == {'adjective'} and re.search(r'(us|a|um)$', e):
         return 'greek_form_pos', 'adjective', 'grammatical_form', 'demonstrated', f"Greek {gr[0]['headword']} (adjective): {gr[0]['gloss'][:40]}"
     if gkinds == {'noun'}:
-        return 'greek_form_pos', 'noun_in_apposition', 'grammatical_form', 'demonstrated', f"Greek {gr[0]['headword']} (noun): {gr[0]['gloss'][:40]}"
+        # LSJ's labels are not reliable enough for a noun reading (leptothrix is an adjective there): later queue
+        return 'held', '', '', '', f"Greek word, reading to confirm: {gr[0]['headword']} ({gr[0]['gloss'][:40]})"
     if c:
         kind, a, b, first, final = c
         evc = f"{kind}: {' + '.join(x for x, _ in first)} + {b}; {final}"
@@ -203,7 +206,7 @@ def main():
                                      ('interpretation_status', r['status']), ('etymology_derivation', r['derivation'])]:
                     if value:
                         w.writerow([r['protonym_id'], r['protonym_name'], r['rule'], field, value, md5])
-    decision = re.compile(r'changed ending|noun-final compound|both a Latin adjective|calls it a noun|part of speech '
+    decision = re.compile(r'changed ending|noun-final compound|both a Latin adjective|proper noun \(|calls it a noun|part of speech '
                           r'recorded|place name of the type locality|recorded as')
     if a.sheet:
         with open(a.sheet, 'w', newline='', encoding='utf-8') as fh:
