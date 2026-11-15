@@ -100,7 +100,13 @@ from propose_toponym_derivations import locality_place as L
 assert L('Norfolk', 'Australia (Norfolk I.)') == 'Norfolk Island' and L('Norfolk', 'U.K. (Norfolk)') is None and L('Java', 'Indonesia (Java)') == 'Java'
 " 2>/dev/null || { echo "TRIPWIRE: toponym matching rules in gender/propose_toponym_derivations.py"; fail=1; }
 # Ruby 4 runners under bundle exec: a plain require 'csv' raises LoadError (staging dry run, 14 Nov)
-for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
+# The general write runner (14 Nov 2026): never overwrites, holds open readings, each field its own result.
+if ruby -e 'exit(RUBY_VERSION >= "3.0" ? 0 : 1)' 2>/dev/null; then
+  ruby gender/selftest_write_protonym_fields.rb >/dev/null 2>&1 || { echo "TRIPWIRE: gender/selftest_write_protonym_fields.rb fails (field results of write_protonym_fields.rb)"; fail=1; }
+else
+  echo "WARN: ruby 3 not found -- gender/selftest_write_protonym_fields.rb skipped (not a commit blocker)"
+fi
+for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
 PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }
 # AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
 PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }

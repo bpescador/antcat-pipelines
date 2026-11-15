@@ -1,0 +1,185 @@
+# frozen_string_literal: true
+#
+# write_protonym_fields.rb -- the general write runner of the pattern-by-pattern work (Brian, 14 Nov 2026 21:43):
+# AntCat derivation, part of speech, its basis and the interpretation status, each validated on its own.
+#
+# One input row per protonym and field. A protonym's rows are written in one transaction, but each field gets
+# its own result: one field can be written while another is held. Nothing is ever overwritten: a field that
+# already holds the proposed value is "already"; one that holds another value is held. The basis and the
+# status only go with the part of speech they were proposed for. Every row names a rule; the rule fixes
+# which fields and which values it may write and the edit summary. A rule is added here only after Brian has
+# approved the pattern (its wording, its rules and a sample).
+#
+# Per protonym, held (nothing written) when:
+#   - the protonym or name differs from the input
+#   - the type locality differs from the one the proposal rests on (locality_md5, when given)
+#   - the rule holds names with a sourced etymology (`etymology_taxt`) and the protonym has one
+#   - the interpretation status is disputed or unresolved (a human judged the reading open)
+#   - the save would change any column besides the rule's fields, validation fails, or a stored value differs
+#     from the input after the save
+#
+# Env:    MODE=check (default; always rolls back) | MODE=write; INPUT=/app/tmp/protonym_fields_input.tsv (default);
+#         ONLY=protonym ids; LIMIT=n (protonyms)
+# Input:  TSV protonym_id, protonym_name, rule, field, value, locality_md5 (blank: no locality check)
+# Output: /app/tmp/write_protonym_fields_<MODE>_<uuid>.tsv: result, protonym_id, name, field, old, new, rule, detail
+# Edits:  AntCatBot, automated_edit: true, one request_uuid, one `update` activity per protonym written.
+# Rollback: the dump taken before the run, or PaperTrail versions by request_uuid (fields written were empty).
+#
+# No csv: Ruby 3.4 made it a bundled gem and AntCat's Gemfile does not list it (see write_etymology_sources.rb).
+require 'digest'
+
+ActiveRecord::Base.logger = nil
+Rails.logger.level = :info
+
+MODE = ENV.fetch('MODE', 'check')
+raise 'MODE must be check or write' unless %w[check write].include?(MODE)
+INPUT = ENV.fetch('INPUT', Rails.root.join('tmp', 'protonym_fields_input.tsv').to_s)
+ONLY = ENV['ONLY']&.split(',')&.map(&:to_i)
+LIMIT = ENV['LIMIT']&.to_i
+INPUT_COLUMNS = %w[protonym_id protonym_name rule field value locality_md5].freeze
+PART_OF_SPEECH = 'gender_agreement_type'
+DEPENDENT_FIELDS = %w[part_of_speech_basis interpretation_status].freeze
+
+# Approved rules only. fields: each field the rule may write, with the values it may write.
+RULES = {
+  # Brian, 14 Nov 2026 21:43: "A verified geographic stem combined with the Latin adjectival suffix -ensis
+  # supports classification as an adjective. Record basis 'grammatical form' and status 'demonstrated' when
+  # the construction is unambiguous." Existing derivations are not rewritten.
+  'toponym_ensis_pos' => {
+    fields: {
+      'gender_agreement_type' => %w[adjective],
+      'part_of_speech_basis' => %w[grammatical_form],
+      'interpretation_status' => %w[demonstrated]
+    },
+    hold_sourced_etymology: true,
+    summary: '[automated] Part of speech recorded: adjective (geographic stem with the Latin adjectival suffix ' \
+             '-ensis), basis grammatical form, demonstrated; under the AntCat policy on name grammar and spelling. ' \
+             'Etymology, derivation and spelling unchanged'
+  }
+}.freeze
+
+abort 'PR #1607 is not deployed (no interpretation_status).' unless Protonym.column_names.include?('interpretation_status')
+abort "No input file #{INPUT}" unless File.exist?(INPUT)
+
+class Reject < StandardError; end
+
+def clean(value)
+  value.to_s.gsub(/[\t\r\n]+/, ' ')
+end
+
+lines = File.readlines(INPUT, chomp: true, encoding: 'UTF-8').reject(&:empty?)
+header = lines.shift.split("\t", -1)
+abort "Input columns must be #{INPUT_COLUMNS.join(', ')}" unless header == INPUT_COLUMNS
+rows = lines.map do |line|
+  fields = line.split("\t", -1)
+  abort "Input line with #{fields.size} fields: #{line[0, 80]}" unless fields.size == header.size
+  header.zip(fields).to_h
+end
+
+# Every row must fit its rule before anything is read from the database: a misfit is a fault in the input.
+rows.each do |r|
+  rule = RULES[r['rule']] or abort "Unknown rule #{r['rule'].inspect} (protonym #{r['protonym_id']})"
+  allowed = rule[:fields][r['field']] or abort "Rule #{r['rule']} may not write #{r['field']} (protonym #{r['protonym_id']})"
+  abort "Rule #{r['rule']} may not write #{r['field']}=#{r['value'].inspect} (protonym #{r['protonym_id']})" unless
+    allowed.include?(r['value'])
+end
+groups = rows.group_by { |r| r['protonym_id'].to_i }
+groups.each do |pid, g|
+  abort "Protonym #{pid}: one rule per protonym" unless g.map { |r| r['rule'] }.uniq.size == 1
+  abort "Protonym #{pid}: one locality_md5 per protonym" unless g.map { |r| r['locality_md5'] }.uniq.size == 1
+  abort "Protonym #{pid}: a field twice" unless g.map { |r| r['field'] }.uniq.size == g.size
+end
+groups = groups.select { |pid, _| ONLY.include?(pid) } if ONLY
+groups = groups.first(LIMIT).to_h if LIMIT
+
+bot = User.find_by!(name: 'AntCatBot')
+uuid = SecureRandom.uuid
+RequestStore.store[:current_request_uuid] = uuid
+PaperTrail.request.whodunnit = bot.id.to_s
+OUT = Rails.root.join('tmp', "write_protonym_fields_#{MODE}_#{uuid}.tsv").to_s
+puts "MODE=#{MODE} request_uuid=#{uuid} input=#{INPUT} md5=#{Digest::MD5.file(INPUT).hexdigest} " \
+     "protonyms=#{groups.size} rows=#{groups.values.sum(&:size)}"
+
+stats = Hash.new(0)
+out = File.open(OUT, 'w')
+out.puts %w[result protonym_id name field old new rule detail].join("\t")
+
+groups.each do |pid, g|
+  rule_name = g.first['rule']
+  rule = RULES[rule_name]
+  name = nil
+  results = g.to_h { |r| [r['field'], { old: nil, result: '', detail: '' }] }
+  begin
+    ActiveRecord::Base.transaction do
+      p = Protonym.find_by(id: pid)
+      raise Reject, 'protonym not found' unless p
+      name = p.name.name
+      g.each { |r| results[r['field']][:old] = p[r['field']] }
+      raise Reject, "name differs (#{name} vs #{g.first['protonym_name']})" unless name == g.first['protonym_name']
+      md5 = g.first['locality_md5']
+      raise Reject, 'type locality differs from the one the proposal rests on' if
+        md5.present? && Digest::MD5.hexdigest(clean(p.locality)) != md5
+      raise Reject, 'has a sourced etymology' if rule[:hold_sourced_etymology] && p.etymology_taxt.present?
+      # someone has judged the reading open: only Brian changes that
+      raise Reject, "interpretation is #{p.interpretation_status}" if
+        p.interpretation_status.in?(Protonym::SCRIPTED_SPELLING_CHANGE_BLOCKED_STATUSES)
+
+      proposed_pos = g.find { |r| r['field'] == PART_OF_SPEECH }&.dig('value')
+      assign = {}
+      g.each do |r|
+        f = r['field']
+        cur = p[f].to_s
+        if cur == r['value']
+          results[f].merge!(result: 'already')
+        elsif cur.present?
+          results[f].merge!(result: 'held', detail: "already set to #{cur}")
+        elsif DEPENDENT_FIELDS.include?(f) && proposed_pos && p[PART_OF_SPEECH].present? && p[PART_OF_SPEECH] != proposed_pos
+          results[f].merge!(result: 'held', detail: "part of speech is #{p[PART_OF_SPEECH]}, not #{proposed_pos}")
+        elsif DEPENDENT_FIELDS.include?(f) && !proposed_pos && p[PART_OF_SPEECH].blank?
+          results[f].merge!(result: 'held', detail: 'no part of speech recorded')
+        else
+          assign[f] = r['value']
+        end
+      end
+      # a dependent field rides on the part of speech it was proposed with: if that one is held, so is it
+      if proposed_pos && results[PART_OF_SPEECH][:result] == 'held'
+        DEPENDENT_FIELDS.each do |f|
+          next unless assign.key?(f)
+          assign.delete(f)
+          results[f].merge!(result: 'held', detail: 'its part of speech is held')
+        end
+      end
+
+      if assign.any?
+        p.assign_attributes(assign)
+        raise Reject, "invalid: #{p.errors.full_messages.join('; ')}" unless p.valid?
+        extra = p.changes.keys - assign.keys
+        raise Reject, "the save would also change #{extra.join(', ')}" if extra.any?
+
+        p.save!
+        changed = p.saved_changes.keys - assign.keys - %w[updated_at]
+        raise Reject, "saved changes beyond the rule's fields: #{changed.join(', ')}" if changed.any?
+        p.reload
+        assign.each { |f, v| raise Reject, "stored #{f} differs from the input" unless p[f].to_s == v }
+
+        p.create_activity(Activity::UPDATE, bot, edit_summary: rule[:summary]).update_columns(automated_edit: true)
+        assign.each_key { |f| results[f].merge!(result: MODE == 'check' ? 'would_write' : 'written') }
+      end
+      raise ActiveRecord::Rollback if MODE == 'check'
+    end
+  rescue Reject => e
+    # a hold of the whole protonym: nothing was written, so no field keeps another result
+    results.each_value { |v| v.merge!(result: 'held', detail: e.message) }
+  rescue ActiveRecord::ActiveRecordError => e
+    results.each_value { |v| v.merge!(result: 'error', detail: "#{e.class}: #{e.message}") }
+  end
+  g.each do |r|
+    v = results[r['field']]
+    stats["#{r['field']}: #{v[:result]}#{v[:result] == 'held' ? " (#{v[:detail].sub(/ \(.*/, '').sub(/ to .*/, '')})" : ''}"] += 1
+    out.puts [v[:result], pid, name, r['field'], v[:old], r['value'], rule_name, v[:detail]].map { |x| clean(x) }.join("\t")
+  end
+end
+out.close
+stats.sort.each { |k, v| puts format('  %-78s %6d', k, v) }
+puts "request_uuid=#{uuid}"
+puts "Wrote #{OUT}"
