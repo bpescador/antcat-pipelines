@@ -6,7 +6,7 @@ Brian's approval of 14 Nov 2026 (20:16): about 640 species-group names whose rec
 -anus) matches the type locality recorded in AntCat get an AntCat derivation of the form
 
   Toponym: Formed from Sulawesi with the Latin adjectival suffix <i>-ensis</i>, 'of Sulawesi'. The type locality
-  recorded in AntCat is in Sulawesi.
+  recorded in AntCat is on Sulawesi.
 
 stating the linguistic formation and the locality evidence, never the author's intention. Only names without a
 sourced etymology and without a derivation. Italics are written as <i>...</i> (rendered since AntCat #1621).
@@ -54,6 +54,11 @@ WITH_ARTICLE = {'Philippines', 'Bahamas', 'Comoros', 'Seychelles', 'Netherlands'
 ON_ISLANDS = {'Sulawesi', 'Sumatra', 'Borneo', 'Java', 'Ambon', 'Bali', 'Buru', 'Cebu', 'Flores', 'Goram', 'Lombok',
               'Luzon', 'Mindanao', 'Negros', 'Palawan', 'Panay', 'Sumba', 'Ternate', 'Timor', 'Tahiti', 'Symi',
               'Aldabra', 'Farquhar', 'Annobon', 'Norfolk', 'Madeira', 'Rotuma', 'Verlaten', 'Hainan', 'Cocos'}
+# islands whose short name is another place too ("on Norfolk" reads as the English county) or is not the island's
+# usual English name: the locality sentence names them in full, keyed by the country AntCat records; the same short
+# name under another country is held
+FULL_ISLAND_NAMES = {('Australia', 'Norfolk'): 'Norfolk Island', ('Costa Rica', 'Cocos'): 'Cocos Island',
+                     ('Indonesia', 'Verlaten'): 'Verlaten Island', ('Seychelles', 'Farquhar'): 'Farquhar Atoll'}
 NOT_A_PLACE = re.compile(r'(cene|aceous|amber|\blate\b|\bearly\b|\bmiddle\b|\bformation\b|\d)', re.I)
 
 
@@ -67,6 +72,18 @@ def segments(locality):
     groups = [g for g in re.split(r'[()]', unicodedata.normalize('NFC', locality)) if g.strip()]
     # 'East Malaysia: Sabah' is one place within another, not two places: the part after the last colon counts
     return [[x.split(':')[-1].strip() for x in re.split(r'[,;]', g) if x.split(':')[-1].strip()] for g in groups]
+
+
+def locality_place(place, locality):
+    """The place as the locality sentence names it ('Norfolk' in 'Australia (Norfolk I.)' -> 'Norfolk Island'), or
+    None when the short name may be another place (FULL_ISLAND_NAMES under another country)."""
+    segs = segments(locality)
+    country = segs[0][0] if segs and segs[0] else ''
+    if (country, place) in FULL_ISLAND_NAMES:
+        return FULL_ISLAND_NAMES[(country, place)]
+    if place in {p for _, p in FULL_ISLAND_NAMES}:
+        return None
+    return place
 
 
 def place_check(words, locality):
@@ -183,6 +200,8 @@ def main():
             reason = f'the matched word is an adjective ("{names[0]}"), not the place name'
         elif place_check(names[0], r['locality']):
             reason = place_check(names[0], r['locality'])
+        elif locality_place(names[0], r['locality']) is None:
+            reason = f'"{names[0]}" may be another place than the island: ' + r['locality']
         elif r['part_of_speech'] and r['part_of_speech'] != 'adjective':
             reason = f"recorded part of speech is {r['part_of_speech']}"
         elif a.library and published_etymology_likely(r, located.get(r['protonym_id']), a.library):
@@ -193,7 +212,7 @@ def main():
         # within X); the suffix in italics (AntCat #1621 renders <i> in the derivation, nothing else)
         text = (f"Toponym: Formed from {the}{place} with the Latin adjectival suffix <i>{suffix}</i>, "
                 f"'of {the}{place}'. The type locality recorded in AntCat is {'on' if place in ON_ISLANDS else 'in'} "
-                f"{the}{place}.")
+                f"{the}{locality_place(place, r['locality']) or place}.")
         out.append([r['protonym_id'], r['protonym_name'], r['author_citation'], r['year'], r['locality'], stem,
                     place, suffix, 'held' if reason else 'proposed', reason, '' if reason else text])
         counts['held' if reason else 'proposed'] += 1

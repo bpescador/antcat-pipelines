@@ -96,6 +96,8 @@ from propose_toponym_derivations import match as M, place_check as P
 assert M('arizon', 'arizona') == 'close' and M('sulawesi', 'sulawesi') == 'exact' and M('philippin', 'philippines') == 'close'
 assert M('brun', 'brunei') == '' and M('korean', 'korea') == ''
 assert P('Colorado', 'Panama (Barro Colorado)') and P('Colorado', 'U.S.A. (Colorado)') == '' and P('Liaoning', 'China (Liaoning, Fushun Amber, Eocene)') == ''
+from propose_toponym_derivations import locality_place as L
+assert L('Norfolk', 'Australia (Norfolk I.)') == 'Norfolk Island' and L('Norfolk', 'U.K. (Norfolk)') is None and L('Java', 'Indonesia (Java)') == 'Java'
 " 2>/dev/null || { echo "TRIPWIRE: toponym matching rules in gender/propose_toponym_derivations.py"; fail=1; }
 # Ruby 4 runners under bundle exec: a plain require 'csv' raises LoadError (staging dry run, 14 Nov)
 for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
