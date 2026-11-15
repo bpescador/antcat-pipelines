@@ -5,11 +5,11 @@ propose_toponym_derivations.py -- the toponym pilot of the AntCat policy on deri
 Brian's approval of 14 Nov 2026 (20:16): about 640 species-group names whose recognizable geographic stem (-ensis,
 -anus) matches the type locality recorded in AntCat get an AntCat derivation of the form
 
-  Toponym: Formed from Sulawesi with the Latin adjectival suffix -ensis, 'of Sulawesi'. Sulawesi is the type
-  locality recorded in AntCat.
+  Toponym: Formed from Sulawesi with the Latin adjectival suffix <i>-ensis</i>, 'of Sulawesi'. The type locality
+  recorded in AntCat is in Sulawesi.
 
 stating the linguistic formation and the locality evidence, never the author's intention. Only names without a
-sourced etymology and without a derivation. The derivation field is plain text on antcat.org (no italics yet).
+sourced etymology and without a derivation. Italics are written as <i>...</i> (rendered since AntCat #1621).
 
 Held, with the reason, instead of proposed:
   - the epithet is a Latin word in its own right (montanus 'of mountains', pratensis 'of meadows'): the place match
@@ -184,8 +184,10 @@ def main():
             reason = published_etymology_likely(r, located.get(r['protonym_id']), a.library)
         place = names[0]
         the = 'the ' if place in WITH_ARTICLE else ''
-        text = (f"Toponym: Formed from {the}{place} with the Latin adjectival suffix {suffix}, 'of {the}{place}'. "
-                f"{(the + place)[:1].upper() + (the + place)[1:]} is the type locality recorded in AntCat.")
+        # Brian, 14 Nov 20:32: "The type locality recorded in AntCat is in X" (exact when AntCat records a place
+        # within X); the suffix in italics (AntCat #1621 renders <i> in the derivation, nothing else)
+        text = (f"Toponym: Formed from {the}{place} with the Latin adjectival suffix <i>{suffix}</i>, "
+                f"'of {the}{place}'. The type locality recorded in AntCat is in {the}{place}.")
         out.append([r['protonym_id'], r['protonym_name'], r['author_citation'], r['year'], r['locality'], stem,
                     place, suffix, 'held' if reason else 'proposed', reason, '' if reason else text])
         counts['held' if reason else 'proposed'] += 1
