@@ -75,7 +75,7 @@ whatever its size, and every question costs him a context switch. So:
    - David & Gosselin 2011, Schodde & Bock 2017, Dickinson et al. 2017 (BBOC): Art. 31.2.2 readings.
    - Vendetti & Garland 2019 (J. Nat. Hist. 53): name formation, kinds of nouns and adjectives.
    - Brian's ZooKeys etymology guidance and examples: state the part of speech, changeable or unchangeable.
-   - Not text-searchable yet: `Formation_of_names.pdf`, Wheeler's "Myrmecological orthoepy" (OCR them first).
+   - "Formation of names" (transliteration and latinization of Greek, with the table) and Wheeler 1956, "Myrmecological orthoepy and onomatology" (ant genus names): scanned; OCR text made 15 Nov (kept out of git).
 
 ## 4. Data and tools (antcat-pipelines)
 
@@ -89,6 +89,9 @@ whatever its size, and every question costs him a context switch. So:
 | Toponym derivations | `gender/propose_toponym_derivations.py` |
 | Part of speech by form (-ensis, -anus toponyms) | `gender/propose_part_of_speech_by_form.py` |
 | Latin readings | `gender/lexicon.py build/lookup` (index from Lewis & Short, kept out of git) |
+| Greek readings | `gender/lexicon.py build-greek` (Liddell-Scott-Jones latinized: k->c, u->y, f->ph, x->ch, -os->-us; the latinization table of "Formation of names" in Brian's folder) |
+| Compounds | `gender/compounds.py` (final element under Rule 1.6: adjective-final, adjectival-from-noun, one-termination, derived adjective, noun-final) |
+| Personal-name genitives | `gender/propose_patronym_genitives.py` (authors, collectors, competing Latin words and places) |
 | The write runner | `gender/write_protonym_fields.rb` (rules table; selftest `gender/selftest_write_protonym_fields.rb` in smoke) |
 | Older runners | `write_etymology_sources.rb` (provenance), `write_etymology_derivations.rb` (toponym pilot) |
 
