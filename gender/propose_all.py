@@ -18,6 +18,9 @@ Q4/Q5 rules (all only where no part of speech is recorded, or the recorded one i
                                                                                 reasonably_inferred
   compound_adjective_pos    adjective-final, adjectival-from-noun, one-termination -> adjective, demonstrated;
                             derived adjective (-osus, -atus, -alis...)       -> adjective, reasonably_inferred
+  place_adjective_pos       -anus, -icus, -acus, -inus on a place in the locality (A&G 249) -> adjective, demonstrated
+  suffix_form_pos           no dictionary word, but an adjectival suffix: -icus/-icum demonstrated; -anus, -inus,
+                            -osus, -ica reasonably inferred; -escens a participle
   greek_form_pos            a Latinized Greek adjective (Art. 31.2.3, melaena) -> adjective; a Greek noun -> noun
 Held: a noun whose ending was changed (globus -> globa); a noun-final compound (Rule 1.6); not identified; a
 published etymology that calls a Latin adjective form a noun (needs a public note first); a part of speech
@@ -39,10 +42,34 @@ def read_tsv(path, quoting=csv.QUOTE_MINIMAL):
         return list(csv.DictReader(fh, delimiter='\t', quoting=quoting))
 
 
-def q4(parser, lsj_keys, epithet):
+PLACE_ADJ = re.compile(r'(i?anus|i?ana|i?anum|icus|ica|icum|acus|aca|acum|inus|ina|inum)$')
+
+
+def place_adjective(epithet, locality):
+    """-anus, -icus, -acus, -inus on a stem that is a place in the AntCat locality (A&G 249; Manara 1992)."""
+    e = fold(epithet)
+    m = PLACE_ADJ.search(e)
+    if not m:
+        return None
+    st = e[: m.start()]
+    words = re.sub(r'[^a-z ]', ' ', fold(locality)).split()
+    for w in words:
+        if len(st) >= 4 and len(w) >= 4 and (w.startswith(st) or st.startswith(w)):
+            return f'-{m.group(1)} on the place {w} in the type locality'
+    return None
+
+
+def q4(parser, lsj_keys, epithet, locality=''):
     """-> (rule, part_of_speech, basis, status, evidence) or ('held', '', '', '', reason)"""
     rs = lookup(parser.ls, epithet)
     common = [r for r in rs if r['kind'] != 'proper noun']
+    # a feminine or neuter "noun" that is the adjective itself used as a substantive (frigida 'cold water', aurea
+    # 'bridle') is not a second reading of the epithet
+    adj_forms = {fold(r['headword']) for r in common if r['kind'] in ('adjective', 'participle')}
+    if adj_forms:
+        stems = {re.sub(r'(us|is|er)$', '', a) for a in adj_forms}
+        common = [r for r in common if not (r['kind'] == 'noun' and r['gen'] in ('f.', 'n.') and
+                                            re.sub(r'(a|um|e)$', '', fold(r['headword'])) in stems)]
     kinds = {r['kind'] for r in common}
     ev = lambda rr: '; '.join(f"{r['headword']} ({r['kind']}, L&S {r['entry']}: {r['gloss'][:40]})" for r in rr[:3])
     if kinds and kinds <= {'adjective', 'participle'}:
@@ -53,20 +80,25 @@ def q4(parser, lsj_keys, epithet):
     if kinds == {'noun (altered ending)'}:
         return 'held', '', '', '', 'a Latin noun with a changed ending: ' + ev(common)
     if kinds & {'adjective', 'participle'} and 'noun' in kinds:
-        return ('latin_ambiguous_default_pos', 'noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
-                'Latin adjective and noun (Rule 1.5): ' + ev(common))
+        # Rule 1.5 needs a judgment of what is reasonable (faber 'smith' or 'skilful'); held for Brian, grouped
+        return 'held', '', '', '', 'both a Latin adjective and a noun (Rule 1.5 default would be noun in apposition): ' + ev(common)
     if kinds:
         return 'held', '', '', '', 'dictionary readings not settled: ' + ev(common)
-    if rs:
-        return 'latin_proper_noun_pos', 'noun_in_apposition', 'grammatical_form', 'demonstrated', ev(rs)
     e = fold(epithet)
+    if e in re.sub(r'[^a-z ]', ' ', fold(locality)).split():
+        return 'held', '', '', '', 'the epithet is a place name of the type locality: noun in apposition or adjective'
+    c = parser.parse(epithet)
+    if rs and not c:
+        return 'latin_proper_noun_pos', 'noun_in_apposition', 'grammatical_form', 'demonstrated', ev(rs)
+    pl = place_adjective(epithet, locality)
+    if pl:
+        return 'place_adjective_pos', 'adjective', 'grammatical_form', 'demonstrated', pl
     gr = lsj_keys.get(e, [])
     gkinds = {r['kind'] for r in gr}
-    if gkinds == {'adjective'}:
+    if gkinds == {'adjective'} and re.search(r'(us|a|um)$', e):
         return 'greek_form_pos', 'adjective', 'grammatical_form', 'demonstrated', f"Greek {gr[0]['headword']} (adjective): {gr[0]['gloss'][:40]}"
     if gkinds == {'noun'}:
         return 'greek_form_pos', 'noun_in_apposition', 'grammatical_form', 'demonstrated', f"Greek {gr[0]['headword']} (noun): {gr[0]['gloss'][:40]}"
-    c = parser.parse(epithet)
     if c:
         kind, a, b, first, final = c
         evc = f"{kind}: {' + '.join(x for x, _ in first)} + {b}; {final}"
@@ -75,6 +107,14 @@ def q4(parser, lsj_keys, epithet):
         if kind == 'derived-adjective':
             return 'compound_adjective_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', evc
         return 'held', '', '', '', 'noun-final compound (Rule 1.6): ' + evc
+    # adjectival suffixes on words no dictionary lists (A&G 249, 241-243): the masculine and neuter forms cannot be
+    # personal names; -ica, -ana, -ina can (Monica, Mariana, Christina), so those are only reasonably inferred or held
+    if re.search(r'(escens|ascens)$', e):
+        return 'suffix_form_pos', 'participle', 'grammatical_form', 'demonstrated', 'present participle of an inchoative verb (-escens)'
+    if re.search(r'(icus|icum)$', e):
+        return 'suffix_form_pos', 'adjective', 'grammatical_form', 'demonstrated', 'adjectival suffix -icus (A&G 249)'
+    if re.search(r'(anus|anum|inus|inum|osus|osum|osa|ica)$', e):
+        return 'suffix_form_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', f"adjectival suffix -{re.search(r'(anus|anum|inus|inum|osus|osum|osa|ica)$', e).group(1)} (A&G 241-249)"
     return 'held', '', '', '', 'not identified in Lewis & Short or LSJ, and no compound parse'
 
 
@@ -87,7 +127,7 @@ def main():
     ap.add_argument('--lsj', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--write-input')
-    ap.add_argument('--sheet')
+    ap.add_argument('--sheet', help="held rows that need Brian's decision (spelling, recorded values, compounds)")
     a = ap.parse_args()
 
     parser = Parser(a.ls, a.lsj)
@@ -116,14 +156,19 @@ def main():
                 basis = 'author_stated' if re.search(r'genitive', ety, re.I) else 'grammatical_form'
                 status = 'demonstrated' if f['level'] == 'demonstrated' else 'reasonably_inferred'
                 ev = f"{f['formation']}; {f['evidence']}: {f['person']}"
-                if f['level'] == 'reasonably inferred' and not ety.strip():
+                clean_person = re.fullmatch(r"(?:(?:de|da|del|van|von|der|la|le|d’|d')\s?)*[A-ZÀ-Ý][A-Za-zÀ-ÿ’'\-]+", f['person'] or '')
+                # the weakest evidence (a collector elsewhere in AntCat) supports the part of speech, not a public
+                # derivation (audit 15 Nov: 5 of 14 such persons named on the description pages, against 76 of 109
+                # for the collector of the name's own type material)
+                strong = f['evidence'] in ("collector of this name's type material", 'author in AntCat')
+                if f['level'] == 'reasonably inferred' and not ety.strip() and clean_person and strong:
                     ending = re.search(r'(orum|arum|ii|ae|i)$', fold(ep)).group(1)
                     der = f"Personal name: formed as the genitive (Latin <i>-{ending}</i>) of the surname {f['person']}."
             else:
                 rule, pos, basis, status, ev = 'held', '', '', '', f['reason']
         else:
             queue = 'Q4/Q5'
-            rule, pos, basis, status, ev = q4(parser, lsj_keys, ep)
+            rule, pos, basis, status, ev = q4(parser, lsj_keys, ep, p['locality'])
             if rule != 'held' and pos in ('adjective', 'participle') and NOUN_STATEMENT.search(ety) and not ADJ_STATEMENT.search(ety):
                 rule, ev = 'held', 'the published etymology calls it a noun; the form is adjectival (note first): ' + ev
         if rule != 'held':
@@ -158,12 +203,15 @@ def main():
                                      ('interpretation_status', r['status']), ('etymology_derivation', r['derivation'])]:
                     if value:
                         w.writerow([r['protonym_id'], r['protonym_name'], r['rule'], field, value, md5])
+    decision = re.compile(r'changed ending|noun-final compound|both a Latin adjective|calls it a noun|part of speech '
+                          r'recorded|place name of the type locality|recorded as')
     if a.sheet:
         with open(a.sheet, 'w', newline='', encoding='utf-8') as fh:
             w = csv.writer(fh, delimiter='\t', lineterminator='\n')
             w.writerow(['protonym_id', 'protonym_name', 'author_citation', 'epithet', 'recorded_pos', 'queue', 'reason',
                         'brian_decision'])
-            for r in sorted((r for r in rows if r['rule'] == 'held'), key=lambda r: (r['queue'], r['evidence'][:30], r['epithet'])):
+            for r in sorted((r for r in rows if r['rule'] == 'held' and decision.search(r['evidence'])),
+                            key=lambda r: (r['evidence'].split(':')[0], r['evidence'].split(';')[-1][-25:], r['epithet'])):
                 w.writerow([r['protonym_id'], r['protonym_name'], r['author_citation'], r['epithet'], r['recorded_pos'],
                             r['queue'], r['evidence'], ''])
     for k in sorted(counts):

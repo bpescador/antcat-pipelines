@@ -34,7 +34,7 @@ PREFIXES = ['sub', 'super', 'semi', 'prae', 'pro', 'post', 'ante', 'inter', 'int
 NOUN_FINALS = {
     'cornis': ('cornu', 'horn', ()), 'cornus': ('cornu', 'horn', ()), 'ceps': ('caput', 'head', ()),
     'pes': ('pes', 'foot', ('pes',)), 'dens': ('dens', 'tooth', ('dens',)), 'color': ('color', 'colour', ('color',)),
-    'formis': ('forma', 'shape', ()), 'ventris': ('venter', 'belly', ()), 'frons': ('frons', 'forehead', ('frons',)),
+    'formis': ('forma', 'shape', ()), 'frons': ('frons', 'forehead', ('frons',)),
     'nodis': ('nodus', 'knot, node', ()), 'nodus': ('nodus', 'knot, node', ('nodus',)),
     'noda': ('nodus', 'knot, node', ()), 'nodum': ('nodus', 'knot, node', ()),
     'spinis': ('spina', 'thorn, spine', ()), 'spina': ('spina', 'thorn, spine', ('spina',)),
@@ -45,7 +45,9 @@ NOUN_FINALS = {
     'gnatha': ('gnathos (Greek)', 'jaw', ()), 'gnathum': ('gnathos (Greek)', 'jaw', ()),
     'notus': ('notos/notum', 'back', ('notus', 'notum')), 'nota': ('nota', 'mark', ('nota',)),
     'notum': ('notum', 'back', ('notum',)), 'ura': ('oura (Greek)', 'tail', ('ura',)), 'urus': ('oura (Greek)', 'tail', ()),
-    'gaster': ('gaster (Greek)', 'belly', ('gaster',)), 'ops': ('ops (Greek)', 'eye, face', ('ops',)),
+    'gaster': ('gaster (Greek)', 'belly', ('gaster',)), 'gastra': ('gaster (Greek)', 'belly', ()),
+    'gastrum': ('gaster (Greek)', 'belly', ()), 'gastrus': ('gaster (Greek)', 'belly', ()),
+    'ventris': ('venter', 'belly', ()), 'ventre': ('venter', 'belly', ()), 'ops': ('ops (Greek)', 'eye, face', ('ops',)),
     'oides': ('eidos (Greek)', 'form', ()), 'pterus': ('pteron (Greek)', 'wing', ()), 'ptera': ('pteron (Greek)', 'wing', ()),
     'soma': ('soma (Greek)', 'body', ('soma',)), 'cola': ('colo (verb)', 'dweller', ('cola',)), 'colus': ('colo (verb)', 'dweller', ()),
     'fer': ('fero (verb)', 'bearing', ()), 'fera': ('fero (verb)', 'bearing', ()), 'ferum': ('fero (verb)', 'bearing', ()),
@@ -60,12 +62,14 @@ ENDINGS = r'(us|a|um|is|e|er|ra|rum|os|on|es|ys|x|s)$'
 class Parser:
     def __init__(self, ls_index, lsj_index):
         self.ls = load(ls_index)
-        self.gr_stems, self.gr_keys = {}, {}
+        self.gr_stems, self.gr_keys, self.gr_noun_stems = {}, {}, {}
         import csv
         with open(lsj_index, encoding='utf-8', newline='') as fh:
             for r in csv.DictReader(fh, delimiter='\t'):
                 if len(r['stem']) >= 3:
                     self.gr_stems.setdefault(r['stem'], r)
+                    if r['kind'] == 'noun':
+                        self.gr_noun_stems.setdefault(r['stem'], r)
                 self.gr_keys.setdefault(r['key'], []).append(r)
         self.la_stems, self.noun_stems = {}, {}
         for key, rs in self.ls.items():
@@ -73,6 +77,8 @@ class Parser:
                 if r['kind'] in ('adjective', 'noun', 'participle', 'verb'):
                     st = re.sub(ENDINGS, '', key)
                     stems = {st}
+                    if r['kind'] == 'adjective' and key.endswith('er'):
+                        stems.add(key[:-2] + 'r')  # niger -> nigr, ruber -> rubr (nigricornis)
                     gen = (fold(r['itype']).split() or [''])[0].strip(' ,.;')
                     # oblique stem from the genitive (femur, oris -> femor; pecten, inis -> pectin; pes, pedis -> ped)
                     if r['kind'] == 'noun' and re.fullmatch(r'[a-z]{2,7}is', gen):
@@ -105,6 +111,13 @@ class Parser:
 
     def parse(self, epithet):
         e = fold(epithet)
+        for v in (e, e.replace('y', 'i'), re.sub(r'([^a])e', r'\1ae', e, count=1) if 'se' in e else e):
+            res = self._parse(v)
+            if res:
+                return res
+        return None
+
+    def _parse(self, e):
         best = None
         for i in range(2, len(e) - 2):
             a, b = e[:i], e[i:]
@@ -117,6 +130,9 @@ class Parser:
                 final = f'{b} from {noun}, {gloss!r}'
             elif len(b) < 5:
                 continue  # short Latin words (anus, ana) give false splits: cub + anus
+            elif any(g['kind'] == 'noun' for g in self.gr_keys.get(b, [])):
+                g = next(g for g in self.gr_keys[b] if g['kind'] == 'noun')
+                kind, final = 'noun-final', f"Greek {g['headword']} (noun, Latinized nominative): {g['gloss'][:40]}"
             elif self.noun_formation(b):
                 kind, final = self.noun_formation(b)
             else:
@@ -146,6 +162,11 @@ class Parser:
             if b.endswith(end) and len(b) - len(end) >= 3:
                 st = b[: -len(end)]
                 r = self.noun_stems.get(st)
+                if not r and st in self.gr_noun_stems and end in ('is', 'us', 'a', 'um'):
+                    g = self.gr_noun_stems[st]  # Greek noun stem with a Latin adjectival ending (longi + tarsis)
+                    if g['key'] == b:
+                        return 'noun-final', f"Greek {g['headword']} (noun, Latinized nominative): {g['gloss'][:40]}"
+                    return 'adjectival-from-noun', f"Greek {g['headword']} (noun) with the adjectival ending -{end}: {g['gloss'][:40]}"
                 if not r:
                     continue
                 own = fold(r['headword'])

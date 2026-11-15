@@ -84,7 +84,88 @@ RULES = {
              '-anus; Art. 31.2), basis grammatical form, demonstrated; under the AntCat policy on name grammar and ' \
              'spelling. Etymology, derivation and spelling unchanged'
   }
-}.freeze
+}.merge(
+  # The combined write (Brian, 15 Nov 2026 07:47 and 07:56: "hold back those on this list but take care of all the
+  # rest"). Proposals by gender/propose_all.py; rules and evidence in gender/ETYMOLOGY_GRAMMAR_RUNBOOK.md, sect. 5.
+  # Personal-name genitives (Art. 31.1.2; Brian's three levels, 14 Nov 21:43; wiki 17 rule 6 for the derivation).
+  'patronym_genitive' => {
+    fields: {
+      'gender_agreement_type' => %w[noun_in_genitive_case],
+      'part_of_speech_basis' => %w[grammatical_form author_stated],
+      'interpretation_status' => %w[demonstrated reasonably_inferred],
+      'etymology_derivation' => %r{\APersonal name: formed as the genitive \(Latin <i>-(?:i|ii|ae|orum|arum)</i>\) of the surname [^<>\t]{2,60}\.\z}
+    },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: noun in the genitive case (a personal-name genitive, Art. 31.1); ' \
+             'with an AntCat derivation where the stem is a documented personal name; under the AntCat policies on ' \
+             'name grammar and spelling and on derived etymologies. Spelling unchanged'
+  },
+  # A Latin word in Lewis & Short with only adjective or participle readings (Art. 31.2; policy Rule 1.1).
+  'latin_form_pos' => {
+    fields: { 'gender_agreement_type' => %w[adjective participle], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded from the Latin form (Lewis & Short: adjective or participle only); ' \
+             'demonstrated; under the AntCat policy on name grammar and spelling. Spelling unchanged'
+  },
+  # A Latin common noun as spelled, or a proper noun (Art. 31.2.1, Simia diana): noun in apposition.
+  'latin_noun_pos' => {
+    fields: { 'gender_agreement_type' => %w[noun_in_apposition], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: noun in apposition (Lewis & Short: a Latin noun as spelled; ' \
+             'Art. 31.2.1); demonstrated; under the AntCat policy on name grammar and spelling. Spelling unchanged'
+  },
+  'latin_proper_noun_pos' => {
+    fields: { 'gender_agreement_type' => %w[noun_in_apposition], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: noun in apposition (a Latin proper noun; Art. 31.2.1, Simia diana); ' \
+             'demonstrated; under the AntCat policy on name grammar and spelling. Spelling unchanged'
+  },
+  # Both an adjective and a noun in Lewis & Short, no author indication: policy Rule 1.5 (Art. 31.2.2) default.
+  # Brian 15 Nov 07:47 did not object to the default.
+  'latin_ambiguous_default_pos' => {
+    fields: { 'gender_agreement_type' => %w[noun_in_apposition], 'part_of_speech_basis' => %w[noun_by_default],
+              'interpretation_status' => %w[reasonably_inferred] },
+    hold_sourced_etymology: true,
+    summary: '[automated] Part of speech recorded: noun in apposition by default (the word is both a Latin adjective ' \
+             'and a noun; Art. 31.2.2, policy Rule 1.5); reasonably inferred. Spelling unchanged'
+  },
+  # Compounds and derived adjectives (compounds.py; Rule 1.6; Poultney 1953; A&G 241-249).
+  'compound_adjective_pos' => {
+    fields: { 'gender_agreement_type' => %w[adjective], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated reasonably_inferred] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: adjective (a compound whose final element is adjectival, or a ' \
+             'Latin stem with an adjective-forming suffix; policy Rule 1.6). Spelling unchanged'
+  },
+  # -anus, -icus, -acus, -inus on a place in the AntCat locality (A&G 249; Manara 1992).
+  'place_adjective_pos' => {
+    fields: { 'gender_agreement_type' => %w[adjective], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: adjective (a place in the type locality with a Latin adjectival ' \
+             'suffix); demonstrated. Spelling unchanged'
+  },
+  # Words no dictionary lists, with an adjectival suffix (-icus demonstrated; -anus, -inus, -osus, -ica inferred;
+  # -escens a present participle).
+  'suffix_form_pos' => {
+    fields: { 'gender_agreement_type' => %w[adjective participle], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated reasonably_inferred] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded from a Latin adjectival suffix or participle ending; under the ' \
+             'AntCat policy on name grammar and spelling. Spelling unchanged'
+  },
+  # Greek words Latinized (Art. 31.2.3, melaena): adjective; Greek nouns: noun in apposition.
+  'greek_form_pos' => {
+    fields: { 'gender_agreement_type' => %w[adjective noun_in_apposition], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded from the Greek word (Liddell-Scott-Jones); demonstrated; under the ' \
+             'AntCat policy on name grammar and spelling. Spelling unchanged'
+  }
+).freeze
 
 abort 'PR #1607 is not deployed (no interpretation_status).' unless Protonym.column_names.include?('interpretation_status')
 abort "No input file #{INPUT}" unless File.exist?(INPUT)
@@ -108,8 +189,8 @@ end
 rows.each do |r|
   rule = RULES[r['rule']] or abort "Unknown rule #{r['rule'].inspect} (protonym #{r['protonym_id']})"
   allowed = rule[:fields][r['field']] or abort "Rule #{r['rule']} may not write #{r['field']} (protonym #{r['protonym_id']})"
-  abort "Rule #{r['rule']} may not write #{r['field']}=#{r['value'].inspect} (protonym #{r['protonym_id']})" unless
-    allowed.include?(r['value'])
+  ok = allowed.is_a?(Regexp) ? allowed.match?(r['value']) : allowed.include?(r['value'])
+  abort "Rule #{r['rule']} may not write #{r['field']}=#{r['value'].inspect} (protonym #{r['protonym_id']})" unless ok
 end
 groups = rows.group_by { |r| r['protonym_id'].to_i }
 groups.each do |pid, g|
@@ -161,6 +242,9 @@ groups.each do |pid, g|
           results[f].merge!(result: 'already')
         elsif cur.present?
           results[f].merge!(result: 'held', detail: "already set to #{cur}")
+        elsif f == 'etymology_derivation' && p.etymology_taxt.present?
+          # wiki 17: a derivation is never shown next to a sourced etymology
+          results[f].merge!(result: 'held', detail: 'has a sourced etymology')
         elsif DEPENDENT_FIELDS.include?(f) && proposed_pos && p[PART_OF_SPEECH].present? && p[PART_OF_SPEECH] != proposed_pos
           results[f].merge!(result: 'held', detail: "part of speech is #{p[PART_OF_SPEECH]}, not #{proposed_pos}")
         elsif DEPENDENT_FIELDS.include?(f) && !proposed_pos && p[PART_OF_SPEECH].blank?

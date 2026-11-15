@@ -45,6 +45,9 @@ def kind_of(itype, gen, pos, body, orth=''):
             return 'participle'
     if 'adj' in pos or re.fullmatch(r'(\w*a, \w*um|e|is, e|\w*is, \w*e)', itype):
         return 'adjective'
+    # a verb's principal parts end in its conjugation number ("āvi, ātum, 1"); L&S marks v. a. / v. n. as gen
+    if re.search(r'(^|[ ,])[1-4]\.?$', itype.strip()) or pos.startswith('v'):
+        return 'verb'
     if gen:
         return 'noun'
     if pos.startswith('v') or re.search(r'\b(āre|ēre|ĕre|īre|are|ere|ire)\b', itype):
@@ -111,6 +114,25 @@ def lookup(idx, epithet):
             out.append(dict(r, matched=how, kind=kind_as or r['kind']))
 
     add(e, 'as spelled')
+    # classical spellings in Lewis & Short: clypeus -> clipeus, setosus -> saetosus, laevigatus -> levigatus
+    for v in {e.replace('y', 'i'), e.replace('ae', 'e'), re.sub(r'^se', 'sae', e), e.replace('k', 'c'),
+              e.replace('oe', 'e'), e.replace('y', 'i').replace('ae', 'e')} - {e}:
+        if v in idx:
+            add(v, 'variant spelling', kinds=('adjective', 'participle', 'noun', 'proper noun'))
+        for end, head in ADJ_FORMS:
+            if v.endswith(end) and len(v) > len(end) + 2:
+                add(v[: -len(end)] + head, f'variant spelling, -{end} as a form of -{head}', kinds=('adjective', 'participle'))
+    # comparative, superlative and diminutive of an adjective are adjectives (A&G 124-128, 243)
+    for pat, heads, how in [(r'(ior|ius)$', ('us', 'is', 'er'), 'comparative'),
+                            (r'(issim|illim|errim)(us|a|um)$', ('us', 'is', 'er'), 'superlative'),
+                            (r'(ul|ell|ol)(us|a|um)$', ('us', 'is'), 'diminutive')]:
+        m = re.search(pat, e)
+        if m and len(e) - len(m.group(0)) >= 3:
+            st = e[: m.start()]
+            for h in heads:
+                add(st + h, how + ' of the adjective', kinds=('adjective',))
+                if how == 'superlative' and m.group(1) == 'illim':
+                    add(st + 'il' + h, how + ' of the adjective', kinds=('adjective',))
     for end, head in ADJ_FORMS:
         if e.endswith(end) and len(e) > len(end) + 2:
             add(e[: -len(end)] + head, f'-{end} as a form of -{head}', kinds=('adjective', 'participle'))
