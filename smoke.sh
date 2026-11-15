@@ -90,8 +90,15 @@ PY
 # page; a later work earlier than the original is never chosen; a later work that quotes an earlier text is held
 grep -q 'votes >= 0.5 \* pdf_pages' gender/etymology_sources.py || { echo "TRIPWIRE: weak page offsets trusted in gender/etymology_sources.py"; fail=1; }
 grep -q 'ref_year\[ref\] < year' gender/etymology_sources.py || { echo "TRIPWIRE: earlier papers accepted as later works in gender/etymology_sources.py"; fail=1; }
+# Toponym pilot (14 Nov): Barro Colorado is not Colorado; Brunei only loosely brunensis (Brno?); stems dropping -s
+PYTHONPATH=gender python3 -c "
+from propose_toponym_derivations import match as M, place_check as P
+assert M('arizon', 'arizona') == 'close' and M('sulawesi', 'sulawesi') == 'exact' and M('philippin', 'philippines') == 'close'
+assert M('brun', 'brunei') == '' and M('korean', 'korea') == ''
+assert P('Colorado', 'Panama (Barro Colorado)') and P('Colorado', 'U.S.A. (Colorado)') == '' and P('Liaoning', 'China (Liaoning, Fushun Amber, Eocene)') == ''
+" 2>/dev/null || { echo "TRIPWIRE: toponym matching rules in gender/propose_toponym_derivations.py"; fail=1; }
 # Ruby 4 runners under bundle exec: a plain require 'csv' raises LoadError (staging dry run, 14 Nov)
-! grep -q "^require 'csv'" gender/write_etymology_sources.rb || { echo "TRIPWIRE: gender/write_etymology_sources.rb requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }
+for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
 PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }
 # AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
 PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }
