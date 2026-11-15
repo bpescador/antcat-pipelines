@@ -154,8 +154,11 @@ def offsets_by_ref(path):
     if os.path.exists(path):
         with open(path, newline='', encoding='utf-8') as fh:
             for r in csv.DictReader(fh, delimiter='\t'):
-                if r['offset'] != '' and int(r['votes'] or 0) >= 2:
-                    out[r['ref_id']] = (int(r['offset']), int(r['votes']))
+                # trusted only when most pages carry it: França et al. 2024 (18 pages, no printed numbers) got +1 from
+                # four stray numbers ("(11 at CELC:"), and its etymology page came out one too high (sample, 14 Nov)
+                votes, pdf_pages = int(r['votes'] or 0), int(r['pdf_pages'] or 0)
+                if r['offset'] != '' and votes >= 2 and votes >= 0.5 * pdf_pages:
+                    out[r['ref_id']] = (int(r['offset']), votes)
     return out
 
 
@@ -172,11 +175,13 @@ def main():
     with open(a.locator, newline='', encoding='utf-8') as fh:
         loc = {r['protonym_id']: r for r in csv.DictReader(fh, delimiter='\t')}
     offsets = offsets_by_ref(a.locator + '.offsets.tsv')
-    text_kind = {}
+    text_kind, ref_year = {}, {}
     refs_tsv = os.path.join(a.library, 'refs.tsv')
     if os.path.exists(refs_tsv):
         with open(refs_tsv, newline='', encoding='utf-8') as fh:
             for x in csv.DictReader(fh, delimiter='\t'):
+                y = re.search(r'\d{4}', x.get('year') or '')
+                ref_year[x['ref_id']] = int(y.group(0)) if y else None
                 ocr, layer = int(x['ocr_pages'] or 0), int(x['text_layer_pages'] or 0)
                 text_kind[x['ref_id']] = 'text layer' if not ocr else 'OCR' if not layer else 'mixed'
 
@@ -239,10 +244,16 @@ def main():
             for w in words[:6]:
                 for rp in idx[w]:
                     cands[rp] += 1
+            # A later work is published after the original description: an earlier paper with the same words is
+            # another species' etymology (Aphaenogaster bressleri 2021 matched Yoshimura & Fisher 2012). Sorted,
+            # so that ties do not depend on set order (review of 14 Nov: two runs chose different papers).
+            year = int(r['year']) if (r.get('year') or '').isdigit() else None
+            ranked = sorted(((n, ref, p) for (ref, p), n in cands.items()
+                             if n >= 3 and ref != r['authorship_reference_id']
+                             and not (year and ref_year.get(ref) and ref_year[ref] < year)),
+                            key=lambda x: (-x[0], x[1], x[2]))
             best = (0.0, None, None, '')
-            for (ref, p), n in cands.most_common(8):
-                if n < 3 or ref == r['authorship_reference_id']:
-                    continue
+            for n, ref, p in ranked[:8]:
                 pages = lib.pages(ref)
                 s, pp, passage = best_window(ety, [p - 1, p], pages)
                 if s > best[0]:

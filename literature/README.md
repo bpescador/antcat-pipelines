@@ -123,3 +123,21 @@ in `_to_delete/`).
 The 23,142 species-group names in the 11 Nov 2026 names export were described in 4,114 references
 (463 before 1900, 1,486 from 1900 to 1960, 787 from 1961 to 1999, 1,378 since 2000). About 25 GB of PDFs at
 the 13 Nov average; the text is a small fraction of that.
+
+## Etymology sources: from match to write (14 Nov 2026)
+
+Where each existing etymology was printed, recorded in AntCat's etymology source fields (source, later-work
+reference, printed page; the text is never changed):
+
+1. `gender/protonym_pages_export.rb` (read-only runner) and `literature/page_locator.py`: the PDF page of each
+   original description. PeerJ and some other journals number pages "184/462"; those count since 14 Nov (Prebus
+   2021b's offset had come out -9).
+2. `gender/etymology_sources.py`: each etymology looked for in the original description, then anywhere in the
+   library. A printed page only where the paper's offset is carried by at least half its pages (França et al.
+   2024 has no page numbers; stray numbers gave +1). A later work must be published after the original.
+3. `gender/verify_etymology_sources.py`: the printed page on the page itself, the species (the passage inside the
+   name's own account), later works later and not quoting an earlier text (MacKay 2025 quotes Baroni Urbani
+   1972). Rows that fail any check are held for the page images; the rest are sampled against page images.
+4. `gender/build_etymology_write_input.py`, then `gender/write_etymology_sources.rb` (AntCatBot, staged gates):
+   it asserts the etymology text by md5, writes only the three columns, never overwrites, and logs old and new
+   values per protonym.

@@ -82,7 +82,15 @@ from page_locator import offsets_for as O, RefText as R
 t = {1: 'Bull. Soc. 141\ntext', 2: '— 42 —\ntext', 3: '_ 143 —\nAtta crassispina n. sp.', 4: '144\ntext'}
 assert O(t)[0][0] == 140
 assert R(t).epithet_pages('crassispina') == {3: 'exact'} and R(t).epithet_pages('crassispinas') == {3: 'fuzzy'}
+# PeerJ numbering "184/462" (Prebus 2021b; the offset came out -9 before 14 Nov): N/total votes for offset 0
+p = {i: f'text\nmore\nlines\nhere\nand\nmore\nPrebus (2021), PeerJ   {i}/4' for i in range(1, 5)}
+assert O(p)[0][0] == 0
 PY
+# gender/etymology_sources.py and verify (2026-11-14 sample): an offset most pages do not carry gives no printed
+# page; a later work earlier than the original is never chosen; a later work that quotes an earlier text is held
+grep -q 'votes >= 0.5 \* pdf_pages' gender/etymology_sources.py || { echo "TRIPWIRE: weak page offsets trusted in gender/etymology_sources.py"; fail=1; }
+grep -q 'ref_year\[ref\] < year' gender/etymology_sources.py || { echo "TRIPWIRE: earlier papers accepted as later works in gender/etymology_sources.py"; fail=1; }
+PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }
 # AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
 PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }
 from tw_status_diff import tw_status as S, action_for as A
