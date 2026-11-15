@@ -173,11 +173,13 @@ brevicornis and basispinosus, Greek, and spelling variants such as laevigatus/le
 | adjective (any nominative form) only | adjective | demonstrated, grammatical_form | "Descriptive: Latin <i>rufus</i>, 'red, reddish'." |
 | participle of a verb only | participle | demonstrated, grammatical_form | "Descriptive: Latin <i>striatus</i>, 'furrowed', participle of <i>strio</i>." |
 | noun only, as spelled | noun_in_apposition | demonstrated, grammatical_form | "Descriptive: Latin <i>spina</i>, 'thorn' (noun)." |
-| adjective and noun | Rule 1.5 default noun_in_apposition unless the author's statement or original usage decides | reasonably_inferred, noun_by_default (or original_usage) | as above, with both readings named |
+| adjective and noun | held for Brian (15 Nov audit: Rule 1.5 needs a judgment of what is reasonable, faber 'smith' or 'skilful'); a feminine or neuter substantive of the same adjective (frigida 'cold water') is not a second reading | | |
 | noun whose ending was changed (globus -> globa) | to Brian: a probable misspelling or unjustified change | none until decided | none |
-| proper noun only (Diana, Niger) | noun_in_apposition (Art. 31.2.1, Simia diana) | demonstrated | "Mythological or literary name:" or "Toponym:" after checking the locality |
+| proper noun only (Diana, Rhamses) | noun_in_apposition (Art. 31.2.1, Simia diana) unless a compound parse or a place adjective applies; with a Greek adjective too (antaeus): held | demonstrated | "Mythological or literary name:" or "Toponym:" after checking the locality |
 | not found | compound parser, then LSJ, then Q5 | | |
 
+- The combined proposal is `gender/propose_all.py`; Greek noun readings from LSJ go to the later queue (its labels
+  are not reliable enough: leptothrix); a Greek adjective counts only with a Latin ending.
 - Glosses: short, written by Claude from the first sense, checked against the entry; the entry id goes in the
   proposals file. Greek: Liddell-Scott-Jones; a Greek word with a Latin adjectival ending is a Latinized
   adjective (Art. 31.2.3, melaena), a Greek noun is a noun.
