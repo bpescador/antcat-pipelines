@@ -83,6 +83,12 @@ own sandbox environment, not Brian's miniconda: an import that works (or
 fails) for the agent says the module is sound, not that Brian's interpreter is
 configured the same way.
 
+Copying a file to Brian's Mac can deliver a stale version: on 14 Nov 2026 a
+second commit of the same output path wrote the earlier copy, and only the
+staging block's `md5sum -c` stopped it. After every copy to the Mac, check the
+md5 on the Mac itself; if it is wrong, copy under a new file name. Mac blocks
+that send a file on start with `test "$(md5 -q FILE)" = <md5> &&`.
+
 ## Context
 
 Deeper background (infrastructure details, open items, decision history)
