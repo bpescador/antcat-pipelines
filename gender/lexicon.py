@@ -133,12 +133,17 @@ def main():
     b = sub.add_parser('build')
     b.add_argument('--ls', required=True)
     b.add_argument('--out', required=True)
+    g = sub.add_parser('build-greek')
+    g.add_argument('--lsj-dir', required=True)
+    g.add_argument('--out', required=True)
     l = sub.add_parser('lookup')
     l.add_argument('--index', required=True)
     l.add_argument('words', nargs='+')
     a = ap.parse_args()
     if a.cmd == 'build':
         build(a.ls, a.out)
+    elif a.cmd == 'build-greek':
+        build_greek(a.lsj_dir, a.out)
     else:
         idx = load(a.index)
         for wd in a.words:
@@ -147,6 +152,74 @@ def main():
             for r in rs:
                 print(f"   {r['headword']:<18} {r['kind']:<11} {r['itype']:<8} {r['gen']:<4} {r['pos']:<6} "
                       f"[{r['matched']}] {r['gloss'][:60]}")
+
+
+
+# ---- Greek: Liddell-Scott-Jones (Perseus edition, betacode) -------------------------------------------------
+# Latinized the way zoological names Latinize Greek: k -> c, u -> y (ou -> u), f -> ph, x -> ch, q -> th, y -> ps,
+# h (eta) -> e, w (omega) -> o, c (xi) -> x, rough breathing -> h, ai -> ae, oi -> oe; endings -os -> -us, -on -> -um.
+BETA = {'a': 'a', 'b': 'b', 'g': 'g', 'd': 'd', 'e': 'e', 'z': 'z', 'h': 'e', 'q': 'th', 'i': 'i', 'k': 'c',
+        'l': 'l', 'm': 'm', 'n': 'n', 'c': 'x', 'o': 'o', 'p': 'p', 'r': 'r', 's': 's', 't': 't', 'u': 'y',
+        'f': 'ph', 'x': 'ch', 'y': 'ps', 'w': 'o', 'v': 'u'}
+
+
+def latinize_beta(beta):
+    b = re.sub(r'\d+$', '', beta.lower())
+    rough = '(' in b[:3]
+    b = re.sub(r'[/\\=()+|*\'^_-]', '', b)
+    out = ''.join(BETA.get(ch, '') for ch in b)
+    out = out.replace('gg', 'ng').replace('gk', 'nc').replace('gx', 'nch').replace('oy', 'u')
+    out = out.replace('ai', 'ae').replace('oi', 'oe').replace('ei', 'i')
+    if out.startswith('r'):
+        out = 'rh' + out[1:]
+    if rough and out and out[0] in 'aeiouy':
+        out = 'h' + out
+    return out
+
+
+def greek_kind(itypes, gen):
+    it = [re.sub(r'[/\\=()+|]', '', x).strip(' ,') for x in itypes]
+    # adjectives: -os, -a/-e, -on; -os, -on (two endings); -ys, -eia, -y; -es, -es
+    if 'on' in it and (len(it) >= 2) or it[:2] in (['eia', 'y'], ['es', 'es']) or ('eia' in it and 'y' in it):
+        return 'adjective'
+    if gen:
+        return 'noun'
+    if it and re.fullmatch(r'(ou|hs|as|os|atos|ews|idos|ontos|ews|eos|ous|w)', it[0]):
+        return 'noun'
+    return 'other'
+
+
+def build_greek(lsj_dir, out_path):
+    import glob
+    n = 0
+    with open(out_path, 'w', newline='', encoding='utf-8') as fh:
+        w = csv.writer(fh, delimiter='\t', lineterminator='\n')
+        w.writerow(['key', 'stem', 'headword', 'kind', 'gen', 'entry', 'gloss'])
+        for path in sorted(glob.glob(f'{lsj_dir}/grc.lsj.perseus-eng*.xml')):
+            text = open(path, encoding='utf-8').read()
+            for attrs, body in ENTRY_RE.findall(text):
+                a = dict(ATTR_RE.findall(attrs))
+                if a.get('type') != 'main':
+                    continue
+                beta = a.get('key', '')
+                lat = latinize_beta(beta)
+                if len(lat) < 3:
+                    continue
+                itypes = re.findall(r'<itype\b[^>]*>(.*?)</itype>', body)
+                gen = tag(body, 'gen')
+                m = re.search(r'<tr\b[^>]*>(.*?)</tr>', body, re.S)
+                gloss = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(1))).strip()[:80] if m else ''
+                head = re.sub(r'[/\\=()+|^]', '', re.sub(r'<[^>]+>', ' ', body[:500]))
+                head = re.sub(r'\[[^\]]*\]', ' ', head)
+                if re.search(r'^\s*\S+\s*,\s*(a|h)\s*,?\s*on\b|^\s*\S+os\s*,\s*on\b|\beia\s*,\s*y\b|^\s*\S+hs\s*,\s*es\b', head):
+                    kind = 'adjective'
+                else:
+                    kind = greek_kind(itypes, gen)
+                key = re.sub(r'os$', 'us', re.sub(r'on$', 'um', lat))
+                stem = re.sub(r'(us|os|um|on|e|a|es|is|ys|er|ex|ix|ax|ox|yx|ops|ps)$', '', lat)
+                w.writerow([key, stem, beta, kind, gen, a.get('id', ''), gloss])
+                n += 1
+    print(f'{n} entries -> {out_path}')
 
 
 if __name__ == '__main__':
