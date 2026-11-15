@@ -33,6 +33,7 @@ import argparse, collections, csv, os, re, sys, unicodedata
 csv.field_size_limit(sys.maxsize)
 
 NUM_RE = re.compile(r'(?<![\w/.,:-])(\d{1,4})(?![\w/,:-]|\.\d)')
+OF_TOTAL_RE = re.compile(r'(?<![\w/.,:-])(\d{1,4})\s?/\s?(\d{1,4})(?![\w/,:.-])')
 PAGE_RE = re.compile(r'\d+')
 NEW_SPECIES_RE = re.compile(r'\b(n\.?\s?sp|sp\.?\s?n(ov)?|nov\.?\s?sp|n\.?\s?(subsp|var|st|stirps|r)\b|'
                             r'nov\.|new species|new subspecies|spec\.?\s?nov|sp\.\s?nova|var\.\s?nov)', re.I)
@@ -50,7 +51,9 @@ def page_files(library, ref_id):
     return texts
 
 
-def edge_numbers(text):
+def edge_numbers(text, total=None):
+    """integers standing alone in the first and last three lines; with `total` (the PDF's page count), also N in
+    "N/total", the page numbering of PeerJ and some other journals (Prebus 2021b: "184/462"), which NUM_RE skips"""
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     edge = lines[:3] + lines[-3:] if len(lines) > 6 else lines
     out = set()
@@ -59,13 +62,17 @@ def edge_numbers(text):
             n = int(m.group(1))
             if 0 < n < 5000:
                 out.add(n)
+        if total:
+            for m in OF_TOTAL_RE.finditer(line):
+                if int(m.group(2)) == total and 0 < int(m.group(1)) <= total:
+                    out.add(int(m.group(1)))
     return out
 
 
 def offsets_for(texts):
     """-> list of (offset, exact votes, score), best first."""
     votes = collections.Counter()
-    seen = {i: edge_numbers(t) for i, t in texts.items()}
+    seen = {i: edge_numbers(t, len(texts)) for i, t in texts.items()}
     for i, nums in seen.items():
         for n in nums:
             votes[n - i] += 1
