@@ -21,11 +21,13 @@ Held, with the reason, instead of proposed:
     may be Brno; koreanensis; peruvianus)
   - an island group ("Andaman Is"), where "Andaman is the type locality" is not exact: wording to agree
   - the recorded part of speech is not adjective (the grammar policy decides; the derivation must agree)
+  - with --locator and --library: described in 1990 or later, or the original description has an Etymology section
+    (a published etymology takes precedence; it is extracted first)
 
 Inputs: --protonyms (gender/protonym_pages_export.rb TSV). Output: --out TSV, one row per candidate, with the
 proposal or the reason it is held. Standard library only; read only.
 """
-import argparse, collections, csv, hashlib, re, sys, unicodedata
+import argparse, collections, csv, hashlib, os, re, sys, unicodedata
 
 csv.field_size_limit(sys.maxsize)
 
@@ -58,7 +60,8 @@ def fold(s):
 def segments(locality):
     """'U.S.A. (Colorado, Florissant, late Eocene)' -> [['U.S.A.'], ['Colorado', 'Florissant', 'late Eocene']]"""
     groups = [g for g in re.split(r'[()]', unicodedata.normalize('NFC', locality)) if g.strip()]
-    return [[x.strip() for x in re.split(r'[,;:]', g) if x.strip()] for g in groups]
+    # 'East Malaysia: Sabah' is one place within another, not two places: the part after the last colon counts
+    return [[x.split(':')[-1].strip() for x in re.split(r'[,;]', g) if x.split(':')[-1].strip()] for g in groups]
 
 
 def place_check(words, locality):
@@ -105,12 +108,40 @@ def match(stem, place):
     return ''
 
 
+ETYMOLOGY_HEADING = re.compile(r'\b(etymology|etymologie|etimolog[ií]a|derivatio nominis|derivation of (the )?name)\b',
+                               re.I)
+
+
+def published_etymology_likely(r, loc, library):
+    """policy: a published etymology takes precedence. '' when none is expected, else the reason to hold."""
+    year = int(r['year']) if r['year'].isdigit() else 0
+    if year >= 1990:     # nearly every description since then prints one, not always within 5 pages of the heading
+        return 'described 1990 or later: a published etymology is likely; extract it first'
+    if loc and loc['confidence'] in ('A', 'B', 'C') and loc['pdf_page']:
+        p = int(loc['pdf_page'])
+        for q in range(p, p + 5):
+            f = os.path.join(library, 'pages', loc['ref_id'], f'p{q:04d}.txt')
+            if os.path.exists(f):
+                with open(f, encoding='utf-8', errors='replace') as fh:
+                    if ETYMOLOGY_HEADING.search(fh.read()):
+                        return 'the original description has an Etymology section: the published etymology first'
+        return ''
+    return ''
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
     ap.add_argument('--protonyms', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--write-input', help='also write the input of gender/write_etymology_derivations.rb')
+    ap.add_argument('--locator', help='page_locator TSV; with --library, holds names whose original description has '
+                                      'an Etymology section (the published etymology goes first)')
+    ap.add_argument('--library', help='literature library folder (pages/<ref_id>/pNNNN.txt)')
     a = ap.parse_args()
+    located = {}
+    if a.locator:
+        with open(a.locator, newline='', encoding='utf-8') as fh:
+            located = {x['protonym_id']: x for x in csv.DictReader(fh, delimiter='\t')}
     with open(a.protonyms, newline='', encoding='utf-8') as fh:
         rows = list(csv.DictReader(fh, delimiter='\t'))
     out, counts = [], collections.Counter()
@@ -149,6 +180,8 @@ def main():
             reason = place_check(names[0], r['locality'])
         elif r['part_of_speech'] and r['part_of_speech'] != 'adjective':
             reason = f"recorded part of speech is {r['part_of_speech']}"
+        elif a.library and published_etymology_likely(r, located.get(r['protonym_id']), a.library):
+            reason = published_etymology_likely(r, located.get(r['protonym_id']), a.library)
         place = names[0]
         the = 'the ' if place in WITH_ARTICLE else ''
         text = (f"Toponym: Formed from {the}{place} with the Latin adjectival suffix {suffix}, 'of {the}{place}'. "
