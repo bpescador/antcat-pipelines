@@ -31,6 +31,21 @@ python3 literature/search.py --library ~/antcat/literature --page 126251 5      
 OCR has errors: search with a prefix or stem, then read the page or the PDF. A spelling used to decide an
 emendation or prevailing usage is always checked in the publication itself.
 
+## Original-description pages
+
+`page_locator.py` finds, for each species-group protonym, the PDF page of its original description: printed page
+numbers in each page's first and last lines give the offset to PDF pages; the cited page of the authorship
+citation, minus the offset, must carry the epithet (OCR errors allowed). Input: `gender/protonym_pages_export.rb`
+(read only, on antcat-prod). Confidence A to F is explained in the script.
+
+```
+python3 literature/page_locator.py --library ~/antcat/literature \
+    --protonyms ~/antcat/taxonworks_sync/protonym_pages_YYYYMMDD.tsv --out page_locator_YYYYMMDD.tsv
+```
+
+First run, 14 Nov 2026 (24,377 protonyms): A 76.8%, B 1.2%, C 4.4% (82% located), D 2.3%, E 3.0%, F 12.4%
+(2,958 have no PDF in AntCat, 62 cite no arabic page).
+
 ## Adding papers
 
 ```

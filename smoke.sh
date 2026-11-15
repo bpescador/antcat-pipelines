@@ -76,6 +76,13 @@ from tw_status_diff import antcat_check as C
 assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251. | Subspecies of F. cinerea : Schultz & Seifert, 2026 : 33.') == ''
 assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251.').startswith('AntCat valid')
 PY
+# literature/page_locator.py (2026-11-14): printed page numbers vote for the offset; a dropped digit counts half
+PYTHONPATH=literature python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: page offset detection broken in literature/page_locator.py"; fail=1; }
+from page_locator import offsets_for as O, RefText as R
+t = {1: 'Bull. Soc. 141\ntext', 2: '— 42 —\ntext', 3: '_ 143 —\nAtta crassispina n. sp.', 4: '144\ntext'}
+assert O(t)[0][0] == 140
+assert R(t).epithet_pages('crassispina') == {3: 'exact'} and R(t).epithet_pages('crassispinas') == {3: 'fuzzy'}
+PY
 # AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
 PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }
 from tw_status_diff import tw_status as S, action_for as A
