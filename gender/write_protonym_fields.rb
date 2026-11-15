@@ -55,6 +55,34 @@ RULES = {
     summary: '[automated] Part of speech recorded: adjective (geographic stem with the Latin adjectival suffix ' \
              '-ensis), basis grammatical form, demonstrated; under the AntCat policy on name grammar and spelling. ' \
              'Etymology, derivation and spelling unchanged'
+  },
+  # Brian, 14 Nov 2026 21:59, asked Claude to answer from the Code and the literature whether every -ensis/-ense
+  # epithet is an adjective by form. Yes: -ensis forms Latin adjectives (Allen & Greenough sect. 249; Pellizzari &
+  # Williams 2013, Table 2; Stearn 1973 via Manara 1992), Art. 31.2, policy Rule 1.1. Proposals screened by
+  # gender/propose_part_of_speech_by_form.py (a published etymology calling it a noun is held for a note first).
+  'ensis_form_pos' => {
+    fields: {
+      'gender_agreement_type' => %w[adjective],
+      'part_of_speech_basis' => %w[grammatical_form author_stated],
+      'interpretation_status' => %w[demonstrated]
+    },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: adjective (the Latin adjectival suffix -ensis/-ense; Art. 31.2), ' \
+             'demonstrated; under the AntCat policy on name grammar and spelling. Etymology, derivation and spelling ' \
+             'unchanged'
+  },
+  # Same question for the toponym derivations in -anus: yes, -anus on a verified place stem is the Latin adjective
+  # "belonging to" (Allen & Greenough sect. 249.2; Stearn 1973 via Manara 1992: mexicanus).
+  'toponym_anus_pos' => {
+    fields: {
+      'gender_agreement_type' => %w[adjective],
+      'part_of_speech_basis' => %w[grammatical_form],
+      'interpretation_status' => %w[demonstrated]
+    },
+    hold_sourced_etymology: true,
+    summary: '[automated] Part of speech recorded: adjective (verified place stem with the Latin adjectival suffix ' \
+             '-anus; Art. 31.2), basis grammatical form, demonstrated; under the AntCat policy on name grammar and ' \
+             'spelling. Etymology, derivation and spelling unchanged'
   }
 }.freeze
 
