@@ -159,7 +159,8 @@ assert 'euryscopa' in R.CHANCE
 assert 'IN THE ORDER THEY RAN' in src and R.DECIDED['202524'][0] == 'noun_in_apposition' and R.DECIDED['171024'][0] == 'adjective'
 PY
 grep -q "a.get('type') == 'spur'" gender/lexicon.py || { echo "TRIPWIRE: L&S false readings (type=spur) indexed again in gender/lexicon.py"; fail=1; }
-for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
+grep -q 'the protonym already has notes' gender/write_notes_page.rb && grep -q "is not the reviewed file's" gender/write_notes_page.rb || { echo "TRIPWIRE: gender/write_notes_page.rb no longer holds an existing page or an unreviewed file"; fail=1; }
+for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb gender/write_notes_page.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
 PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }
 # AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
 PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }

@@ -98,6 +98,7 @@ whatever its size, and every question costs him a context switch. So:
 | Personal-name genitives | `gender/propose_patronym_genitives.py` (authors, collectors, competing Latin words and places) |
 | The write runner | `gender/write_protonym_fields.rb` (rules table; selftest `gender/selftest_write_protonym_fields.rb` in smoke) |
 | Older runners | `write_etymology_sources.rb` (provenance), `write_etymology_derivations.rb` (toponym pilot) |
+| Notes on a name | `gender/write_notes_page.rb` (one reviewed document, one protonym; sect. 11) |
 
 **The runner** writes `etymology_derivation`, `gender_agreement_type`, `part_of_speech_basis` and
 `interpretation_status`, one input row per protonym and field (`protonym_id, protonym_name, rule, field, value,
@@ -336,4 +337,25 @@ still propose differently is listed for Brian or the next cycle, never left sile
     the stem), Eurhopalothrix circumcapillum and semicapillum (recorded adjective, but -capillum in a feminine
     genus does not agree: the author's noun in apposition stands).
 
+## 11. Notes on this name (16 Nov 2026)
+
+A reviewed analysis of one name (the model is *Temnothorax crassispinus*) lives on AntCat as the name's page of
+notes: AntCat #1623, `/protonyms/<id>/notes`, one page per protonym, Markdown. Decided by Brian on 16 Nov: the page
+hangs under the protonym, not in the help wiki; one link on the name's pages, "Notes on this name"; sections as
+needed, each a second-level heading: `## Etymological notes` (derivation, part of speech, gender agreement and the
+accepted spelling), `## Type specimen notes`, `## Nomenclatural notes` (status).
+
+- **Write the document as a .md file**, one paragraph per line (AntCat shows a line break inside a paragraph as a
+  line break). Subsections are `###`. Tables and `> quoted` lines render as written. Authors' statements are
+  paraphrased; short quotations only.
+- **A page goes on antcat.org only with Brian's sign-off of that document.** The decision table then reads
+  "Approved", with his name and the date; a work not seen is still listed under "Not seen".
+- **Runner:** `gender/write_notes_page.rb`, one protonym per run, `MODE=check` first. It needs `PROTONYM_ID`, `NAME`
+  and the `MD5` of the reviewed file, and holds when the file is not that file, the name differs, or the protonym
+  already has notes (it never overwrites: later changes are edits on the site, where the page keeps its history).
+  AntCatBot, one `create` activity. Gates as for any production write: dump, check, the write (one page is its own
+  canary), the page read on antcat.org.
+- **The protonym's fields are a separate write.** A notes page states what AntCat records; check that the protonym
+  holds those values (part of speech, bases, interpretation status, the public "Spelling." note) and write them with
+  the field runner or by hand if it does not.
 
