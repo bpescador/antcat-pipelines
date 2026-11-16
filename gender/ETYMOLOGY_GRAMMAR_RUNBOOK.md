@@ -316,7 +316,7 @@ still propose differently is listed for Brian or the next cycle, never left sile
    adjective_not_agreeing, noun_or_adjective), `unresolved.tsv`, `decisions.tsv` (every decision with its reason).
    Audit each group by reading the decisions, as after any write.
 8. **Read the whole write list before production, by rule.** On 16 Nov, after staging and before production, a
-   read of all 1,439 epithets found 44 wrong or weak decisions, none visible in counts or spot values:
+   read of all 1,439 epithets changed 35 decisions, none visible in counts or spot values:
    - an etymology recorded in AntCat that cites a later work (a reviser's table) is not the author's statement
      (Monomorium kiliani, leae, flavipes: now the Code's default, or unresolved);
    - "a noun in the genitive case", "genitive standing in apposition" and "a patronymic" on a genitive ending
