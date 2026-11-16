@@ -30,7 +30,7 @@ Outputs (--out-dir): write_input.tsv (for gender/write_protonym_fields.rb), corr
 gender/correct_protonym_fields.rb: values on production the evidence contradicts), wiki_list.tsv (difficult names,
 by issue, with the evidence), unresolved.tsv (no evidence yet), decisions.tsv (everything, with the reason).
 """
-import argparse, collections, csv, os, re, sys, unicodedata
+import argparse, collections, csv, difflib, os, re, sys, unicodedata
 
 csv.field_size_limit(sys.maxsize)
 
@@ -84,6 +84,26 @@ EPITHET = {  # epithet: (part of speech, basis, status, reason)
     'hemipsila': ('adjective', 'grammatical_form', 'reasonably_inferred', 'hemi + Greek psilos, bare'),
     'desupra': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
                 'a Latin adverb ("from above"): treated as a noun in apposition (Art. 11.9.1)'),
+    # 16 Nov, read before production: finals the parser took for nouns (Greek phora "an act", oura, chyma, cheima)
+    # are the feminines of Latinized Greek adjectives; spongia, bilis and Molossus are nouns in their own right.
+    'eriophora': ('adjective', 'grammatical_form', 'reasonably_inferred',
+                  'Greek eriophoros, wool-bearing (LSJ), Latinized -phorus, -a, -um (as -ferus)'),
+    'selenophora': ('adjective', 'grammatical_form', 'reasonably_inferred',
+                    'seleno + -phora, moon-bearing: the feminine of a Latinized Greek adjective in -phorus (as -ferus)'),
+    'micrura': ('adjective', 'grammatical_form', 'reasonably_inferred',
+                'micr + -ura, small-tailed: the feminine of a Latinized Greek adjective in -urus (as melanura, chrysurus)'),
+    'cacochyma': ('adjective', 'grammatical_form', 'reasonably_inferred',
+                  'Greek kakochymos, with bad juices (as eu-, dys-, polychymos in LSJ), Latinized -us, -a, -um'),
+    'dyschima': ('adjective', 'grammatical_form', 'reasonably_inferred',
+                 'Greek dyschimos, troublesome, fearful (LSJ), Latinized -us, -a, -um'),
+    'clasmospongia': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
+                      'clasmo + spongia, a sponge: a noun in its own nominative (spongius is a rare late adjective)'),
+    'subspongia': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
+                   'sub + spongia, a sponge: a noun in its own nominative (spongius is a rare late adjective)'),
+    'atrabilis': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
+                  'atra bilis, black bile: a noun with its adjective'),
+    'molossus': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
+                 'Molossus, the Molossian hound: a noun beside the adjective (Rule 1.5)'),
 }
 # Names where the parser's adjective is a chance match and the author's noun is right (kava the plant, not cavus;
 # Tinogasta the town; iso + electrum, the epithet of T. electrum).
@@ -97,8 +117,9 @@ ARBITRARY = re.compile(r'(?i)arbitrary (?:combination|arrangement|name)|random c
 PERSON = re.compile(r"(?:named (?:after|for|in hono[u]?r of)|dedicated to|hono[u]?r of|memory of|dedicad\w+ a|"
                     r"homenagem (?:a|à|ao)|zu ehren|patronym \w+ to|hono[u]?rs)\s+(?:[a-zà-ÿ’'.,-]+\s+){0,7}[A-Z]")
 OTHER_NAME = re.compile(r'^\W*[A-Z]\.\s+([a-z]{4,})\b')
+SAYS_GENITIVE = re.compile(r'(?i)genitiv|patronym|matronym')
 # Matches that are chance (a Malagasy or Spanish word, a place): left unresolved.
-CHANCE = {'insutura', 'anjara', 'sisypha', 'chamela', 'palta', 'theia', 'megalocola'}
+CHANCE = {'insutura', 'anjara', 'sisypha', 'chamela', 'palta', 'theia', 'megalocola', 'euryscopa'}
 ONE_TERMINATION = re.compile(r'(ceps|pes|dens|color|frons|ax|ex|ix|ox|ops|ans|ens)$')
 
 ADJ_STATEMENT = re.compile(
@@ -158,6 +179,15 @@ def main():
     by_ref = collections.defaultdict(set)
     for p in PP.values():
         by_ref[p['authorship_reference_id']].add(fold(p['epithet']))
+    def later_work(p):
+        """the etymology recorded in AntCat cites a work other than the original description (a reviser's table,
+        a later catalogue): what it says is not the author's statement. Monomorium kiliani Forel 1902 and leae
+        Forel 1913 were read as "author: noun in apposition" from a 2019 table (16 Nov, found before production)."""
+        cited = set(re.findall(r'\{ref (\d+)\}', p['etymology_taxt']))
+        if p['etymology_reference_id']:
+            cited.add(p['etymology_reference_id'])
+        return bool(cited - {p['authorship_reference_id']})
+
     stated = {}
     for r in read(a.stated):
         pid = r['protonym_id']
@@ -174,7 +204,7 @@ def main():
             reliable = False  # the passage opens with another species' name ("C. flavopectus derives from ...")
         stated[pid] = (flags, r['passage'], reliable, 'original description, PDF page ' + r['passage_page'])
     for pid, p in PP.items():
-        if p['etymology_taxt']:
+        if p['etymology_taxt'] and not later_work(p):
             stated[pid] = (classify(p['etymology_taxt']), p['etymology_taxt'], True, 'etymology recorded in AntCat')
 
     def original_genus(p):
@@ -217,7 +247,10 @@ def main():
         have = prod[pid].get('gender_agreement_type')
         flags, passage, reliable, where = stated.get(pid, (set(), '', False, ''))
         quote = f'{where}: "{passage[:260]}"' if passage else ''
-        says_noun = reliable and 'noun_in_apposition' in flags and \
+        # "a noun in the genitive case" (loarelae), "genitive ... standing in apposition" (trinacriae), "a patronymic
+        # ... treated as a noun in apposition" (Adetomyrma bressleri): a genitive, whatever else is said
+        says_genitive = bool(reliable and GEN_END.search(ep) and SAYS_GENITIVE.search(passage))
+        says_noun = reliable and 'noun_in_apposition' in flags and not says_genitive and \
             (EXPLICIT_NOUN.search(passage) or not GEN_END.search(ep))   # "Non-Latin noun" on claveri is no apposition
         says_adj = (reliable and 'adjective' in flags and not says_noun and ADJ_STATEMENT.search(passage) and
                     not NOUN_WORD.search(passage))
@@ -262,6 +295,11 @@ def main():
             continue
 
         # --- 1. the author's statement
+        if says_genitive and 'arbitrary' not in flags:
+            decide(pid, 'write', 'noun_in_genitive_case',
+                   'author_stated' if re.search(r'(?i)genitiv', passage) else 'grammatical_form', 'demonstrated',
+                   'patronym_genitive', 'the author calls it a genitive or a patronym. ' + quote)
+            continue
         if says_noun:
             if r['rule'] != 'held' and adjectival_form(r) and not ONE_TERMINATION.search(ep):
                 decide(pid, 'wiki', r['part_of_speech'], '', '', '', 'author_noun_form_adjective: the form is an adjective '
@@ -285,8 +323,28 @@ def main():
             continue
         if (reliable and flags & {'dedication', 'genitive'} and r['rule'] == 'held' and r['queue'] == 'Q3' and
                 GEN_END.search(ep) and not flags & {'place'} and PERSON.search(passage)):
-            decide(pid, 'write', 'noun_in_genitive_case', 'grammatical_form', 'demonstrated', 'patronym_genitive',
-                   'a dedication with a genitive ending. ' + quote)
+            names = set()
+            for w in re.findall(r"\b[A-Z][\w'’-]+", passage):
+                w = fold(w).replace('ł', 'l').replace('ø', 'o').replace('đ', 'd')
+                names |= {w.replace('-', '').replace("'", '').replace('’', '')} | set(w.split('-'))
+            stem = GEN_END.sub('', ep).rstrip('i')
+            if ep in names:
+                # Lasius fuji (Mount Fuji), Tetramorium kali (Kali Ressi), Strumigenys waiwai, Paraparatrechina ali
+                if ch:
+                    decide(pid, 'wiki', 'noun_in_apposition', '', '', '', 'noun_spelling_changed: a name used '
+                           f'unchanged; accepted spelling {ch}. ' + quote)
+                else:
+                    decide(pid, 'write', 'noun_in_apposition', 'grammatical_form', 'reasonably_inferred',
+                           'noun_by_default_pos', 'the name is used unchanged, not in the genitive: a noun in '
+                           'apposition (Art. 31.1). ' + quote)
+            elif any(stem == n or (len(stem) >= 3 and stem in n) or (len(n) >= 4 and n in stem) or
+                     (len(stem) >= 5 and difflib.SequenceMatcher(None, stem, n).ratio() >= 0.7) for n in names):
+                # Xu -> xui; T. Suman -> tsumani; Colleen -> coleenae; OCR "Tiilin" for Tülin -> tulinae
+                decide(pid, 'write', 'noun_in_genitive_case', 'grammatical_form', 'demonstrated', 'patronym_genitive',
+                       'a dedication with a genitive ending. ' + quote)
+            else:
+                decide(pid, 'unresolved', reason='a dedication, but the name behind the epithet is not in the passage. '
+                       + quote)
             continue
 
         if ep in CHANCE:
@@ -378,7 +436,15 @@ def main():
                 decide(pid, 'write', 'noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
                        'noun_by_default_pos', 'a place name used unchanged (' + p['locality'][:60] + ')')
         elif 'published etymology calls it a noun' in ev:
-            if ONE_TERMINATION.search(ep):
+            taxt = f'etymology recorded in AntCat: "{p["etymology_taxt"][:260]}"'
+            if later_work(p) and ONE_TERMINATION.search(ep):
+                # a reviser's statement is not the author's: the Code's default, with the reviser quoted
+                decide(pid, 'write', 'noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
+                       'noun_by_default_pos', 'a compound ending in a noun (one termination, the spelling is the same '
+                       'either way); noun in apposition by default (Art. 31.2.2); a later work calls it a noun. ' + taxt)
+            elif later_work(p):
+                decide(pid, 'wiki', '', '', '', '', 'later_work_noun_form_adjective: ' + ev[:120] + '. ' + taxt)
+            elif ONE_TERMINATION.search(ep):
                 decide(pid, 'write', 'noun_in_apposition', 'author_stated', 'demonstrated', 'author_stated_pos',
                        'the author calls it a noun; an ending of one termination, so the spelling is the same either '
                        'way. ' + quote)

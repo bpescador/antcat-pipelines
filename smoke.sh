@@ -145,6 +145,18 @@ assert R.OTHER_NAME.match('C. flavopectus derives from Latin').group(1) == 'flav
 assert 'faber' in R.BOTH_NOUN and 'ornatus' not in R.BOTH_NOUN and R.ALTERED['inca'] == 'N'
 PY
 grep -q "noun_spelling_changed" gender/resolve_held.py || { echo "TRIPWIRE: gender/resolve_held.py writes nouns whose accepted spelling was changed"; fail=1; }
+# Third reading, 16 Nov 2026, before production: a later work's table is not the author's statement (Monomorium
+# kiliani, leae); "noun in the genitive case" is a genitive (loarelae, trinacriae); a name used unchanged is no
+# genitive (Lasius fuji, Tetramorium kali); -phora and -ura are adjectival, spongia and Molossus are nouns
+PYTHONPATH=gender python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: the 16 Nov pre-production reading lost in gender/resolve_held.py (later_work, SAYS_GENITIVE, names used unchanged)"; fail=1; }
+import inspect, resolve_held as R
+src = inspect.getsource(R)
+assert 'def later_work(p)' in src and "not later_work(p)" in src and 'the name is used unchanged, not in the genitive' in src
+assert R.SAYS_GENITIVE.search('to be treated as a noun in the genitive case') and R.SAYS_GENITIVE.search('is a patronymic')
+assert R.EPITHET['eriophora'][0] == 'adjective' and R.EPITHET['micrura'][0] == 'adjective'
+assert R.EPITHET['subspongia'][0] == 'noun_in_apposition' and R.EPITHET['molossus'][0] == 'noun_in_apposition'
+assert 'euryscopa' in R.CHANCE
+PY
 grep -q "a.get('type') == 'spur'" gender/lexicon.py || { echo "TRIPWIRE: L&S false readings (type=spur) indexed again in gender/lexicon.py"; fail=1; }
 for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
 PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }

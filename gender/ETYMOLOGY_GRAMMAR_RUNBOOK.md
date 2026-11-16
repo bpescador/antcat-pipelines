@@ -315,4 +315,17 @@ still propose differently is listed for Brian or the next cycle, never left sile
    author_noun_form_adjective, proper_noun_or_adjective, noun_stem_other_ending, author_adjective_form_not,
    adjective_not_agreeing, noun_or_adjective), `unresolved.tsv`, `decisions.tsv` (every decision with its reason).
    Audit each group by reading the decisions, as after any write.
+8. **Read the whole write list before production, by rule.** On 16 Nov, after staging and before production, a
+   read of all 1,439 epithets found 44 wrong or weak decisions, none visible in counts or spot values:
+   - an etymology recorded in AntCat that cites a later work (a reviser's table) is not the author's statement
+     (Monomorium kiliani, leae, flavipes: now the Code's default, or unresolved);
+   - "a noun in the genitive case", "genitive standing in apposition" and "a patronymic" on a genitive ending
+     are genitives, whatever boilerplate follows (loarelae, trinacriae, Adetomyrma bressleri);
+   - a dedication whose name equals the epithet is the name used unchanged, a noun in apposition, not a genitive
+     (Lasius fuji, Tetramorium kali, Strumigenys waiwai, Paraparatrechina ali); the name behind a genitive must
+     be in the passage (Xu, T. Suman, Colleen for coleenae);
+   - finals read as Greek nouns that are feminines of Latinized adjectives: -phora (as -fera), -ura (as
+     chrysurus, melanura), cacochyma, dyschima; nouns read as adjectives: -spongia, atrabilis, molossus.
+   The inputs staging ran were replaced; staging keeps the first version of those rows (test data).
+
 
