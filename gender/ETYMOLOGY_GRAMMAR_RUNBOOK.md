@@ -234,6 +234,11 @@ on the coordination board. Blocks for Brian, one machine each, `&&`-chained, ser
    canary of 3 or 4 by `ONLY=` (one per rule); Claude reads the pages on antcat.org in Brian's Chrome (protonym
    row and sidebar box, catalog editors' sidebar); about 10 by `ONLY=` ids (never `LIMIT`); the rest; a final
    dry run that holds everything as already recorded, and counts.
+   The page audit after the full run is a stratified sample (2 or 3 per rule) read for **content**, not only
+   for "the page shows the input": on 16 Nov the pages all matched the input and one entry (icarus as an
+   adjective) still revealed a parser error affecting 680 protonyms. When an audit finds an error: stop, fix the
+   code, re-run the proposals, diff them against what production holds, and correct with
+   `gender/correct_protonym_fields.rb` through the same gates (sect. 9).
 4. Logs to the Mac (`~/antcat/taxonworks_sync/etymology_write_logs/`), checked; then clear runner, input and logs
    in `/app/tmp/` and `/root/` on both servers (leave other projects' files).
 5. Record the same day: the AntCat server log (What with commit and md5, Tested, Rollback), the board, the
@@ -248,3 +253,30 @@ on the coordination board. Blocks for Brian, one machine each, `&&`-chained, ser
 - AntCat wiki pages: headings `#####` and `######` only, one paragraph per line, quotes as `<blockquote>`.
 - Every claim about a page is read on the page; every count comes from the database, not from the input.
 - Copyrighted literature stays out of git and off public pages; only citations and short glosses.
+- Lewis & Short (Perseus XML), found by the 16 Nov audit: some proper nouns are printed in lower case (orth
+  "icarus", key "Icarus": read the key too); `<pos>`, `<itype>`, `<gen>` anywhere in an entry may belong to a
+  derived word (Icarus ... Derivv. Icarius, a, um, adj.): only the headword's own grammar counts, up to the
+  first headword printed after its first sense (`<sense>` opens mid-grammar and is no boundary); an adjective's
+  inflection decides over a substantive's gender (Afer, fra, frum); entries `type="spur"` are false readings L&S
+  records only to reject them (Obsidianus, sericeus) and are not indexed.
+- Compound parses (16 Nov): the longest final word is not the best split (abd + ominalis, lith + ophila, afri +
+  canus). A split needs a real junction: a prefix, a combining form ending in -i-/-o-, a stem before -oides, a
+  Greek prefix elided before a vowel. A final that is one letter plus a suffix (c + anus, l + atum) is refused;
+  after a short prefix only a real adjective of six letters or more counts; a derived adjective needs a Latin
+  stem of four letters or more. A third-declension genitive of a noun (victoris, stipitum, caespitum) is a noun
+  in the genitive case, never a compound; -alis/-aris words are adjectives even when they are also a genitive
+  (cervicalis).
+- Place names in -ia that are also the feminine of an -ius adjective (Aeolia/Aeolius, Syria/Syrius) are held
+  under Rule 1.5; Roman surnames from adjectives (Niger, Rufus) are no competing reading.
+
+## 9. Correcting a write
+
+`gender/correct_protonym_fields.rb` (selftest in smoke): input `protonym_id, protonym_name, action, field,
+written_value, new_value, reason`; `action` revert (back to the value before the write, from PaperTrail) or
+update (to an allowed value); `WRITE_REQUESTS` = the request_uuids of the write being corrected. It touches only
+fields that write set and only while they still hold the written value; a value someone else entered is never
+changed (held), a field the write found already set is kept. Same gates as a write: backup, dry run, canary
+(one per kind of correction), about 10 to 20 by id, the rest (protonyms already corrected show as held), then
+the state of every corrected protonym against the corrected proposal, and pages read on antcat.org. Build the
+input from the diff between the corrected proposal and what production holds; anything the new code would
+still propose differently is listed for Brian or the next cycle, never left silent.
