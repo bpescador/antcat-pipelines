@@ -123,7 +123,8 @@ assert not p.junction('abd', 'ominalis', []) and not p.junction('lith', 'ophila'
 assert p.junction('micr', 'ophthalma', []) and p.junction('formic', 'oides', [])
 p.gen_endings = {'oris': [('victor', {})], 'itis': [('stipes', {})], 'dentis': [('dens', {})]}
 assert p.genitive('victoris') is not None and p.genitive('stipitum') is not None and p.genitive('dentis') is not None
-assert p.genitive('nigricornis') is None
+p.gen_endings.update({'alis': [('cervical', {})], 'inis': [('caligo', {})]})
+assert p.genitive('nigricornis') is None and p.genitive('cervicalis') is None and p.genitive('calinum') is None
 PY
 grep -q "a.get('type') == 'spur'" gender/lexicon.py || { echo "TRIPWIRE: L&S false readings (type=spur) indexed again in gender/lexicon.py"; fail=1; }
 for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done

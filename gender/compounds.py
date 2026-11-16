@@ -142,13 +142,15 @@ class Parser:
         if not re.search(r'(is|um)$', e) or len(e) < 6:
             return None
         sg = e[:-2] + 'is' if e.endswith('um') else e
+        if sg.endswith(('alis', 'aris')):
+            return None  # cervicalis: the adjective in -alis, though also the genitive of cervical, alis
         for key, r in self.gen_endings.get(sg, []):
             if key[:2] == sg[:2]:
                 return r  # L&S prints the whole genitive (dens, dentis; pes, pedis)
         for n in range(3, 7):
             st = sg[:-n]
             for key, r in self.gen_endings.get(sg[-n:], []):
-                if key.startswith(st) and len(st) >= max(3, len(key) - 3):
+                if key.startswith(st) and len(st) >= max(4, len(key) - 2):  # not calinum from caligo
                     return r
         return None
 
