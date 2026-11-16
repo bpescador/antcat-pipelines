@@ -23,12 +23,16 @@ whatever its size, and every question costs him a context switch. So:
 2. **Claude answers rule-level questions that the Code and the literature settle**, with citations, records
    the answer in the runner's `RULES` comment and in the roadmap, and tells Brian in one line; he can veto.
    (Done 15 Nov for -ensis and the -anus toponyms.)
-3. **Brian decides only:**
-   - a new pattern's rule, once, from a 30-name sample;
+3. **Brian decides only** (changed 16 Nov 2026 10:40: "I can't review all these names: you have to use insect
+   knowledge: refer to TW ..., the ocr of the literature ..., the pdfs in Background reading for ICZN ... we may
+   only offer a wiki for the difficult ones where the issues are presented but not resolved"):
    - any change to an accepted spelling (Art. 33 first);
-   - overriding a value a person entered (the runner never overwrites);
-   - names where neither the Code, the policies nor a default settle the reading. He gets them on one sheet,
-     grouped, with Claude's proposed reading and the policy default filled in, so most rows are a glance.
+   - overriding a value a person entered (the runner never overwrites).
+   There is no sheet for Brian any more. **Claude decides the held names** with `gender/resolve_held.py`
+   (sect. 10): what the original description says, then the dictionary and the compound parser, then the
+   defaults of Art. 31.2.2 as read by David & Gosselin 2011 and word-by-word judgments kept in that script's
+   tables. Names the evidence cannot settle are not forced: they go to the wiki list (the issue and both
+   readings, presented and not resolved) or stay unresolved with the reason.
 4. **Batch size:** never run a write cycle for fewer than about 1,000 names unless it is a pilot of a new rule;
    fold small groups into the next cycle. Combine staging dry run and write in one block.
 
@@ -280,3 +284,35 @@ changed (held), a field the write found already set is kept. Same gates as a wri
 the state of every corrected protonym against the corrected proposal, and pages read on antcat.org. Build the
 input from the diff between the corrected proposal and what production holds; anything the new code would
 still propose differently is listed for Brian or the next cycle, never left silent.
+
+## 10. Deciding the held names (16 Nov 2026)
+
+1. **What the author printed** comes first. `gender/extract_stated_grammar.py` reads, in the library, each
+   species' own account (from its heading to the next name's heading) and takes the etymology paragraph and any
+   explicit statement: noun in apposition, adjective, participle, arbitrary combination, a dedication. 16 Nov:
+   2,692 passages for 20,111 located protonyms, nearly all since 1990. Guards: the passage must name the epithet,
+   or name no sister species; a passage that opens with another species' name is not used; "arbitrary" must be
+   said of the species name, not the genus; "Non-Latin noun" on a genitive (claveri) is not "in apposition".
+2. **An author's noun is followed**, except where the form is, on good evidence, a Latin adjective that must agree
+   (policy Rule 1.1, the Chelaner precedent): then AntCat's adjective stands and the name goes to the wiki list
+   with the author's words. A chance dictionary match (kava for cavus) or a noun stem with another ending
+   (semicapillum) is not good evidence against the author. One-termination endings (-ceps, -frons, -dens) follow
+   the author: the spelling is the same either way.
+3. **Art. 31.2.2 (David & Gosselin 2011):** a name spelled as a noun in its own nominative, with nothing in the
+   original description indicating an adjective, is a noun in apposition (basis noun by default, reasonably
+   inferred): compounds ending in such a noun (-spina, -thorax, -gaster, -ops, -scapus, -nodus, -cola), Latin
+   nouns that are also adjectives where the noun is a natural reading (faber, gibber, merula, inquilinus: D&G's
+   mercenarius, vicinus, vidua), proper nouns (Hector, Pythia, Syria), place names used unchanged (mindanao).
+4. **Not ambiguous in practice:** a Latin adjective or participle whose noun homonym is only its verbal noun or
+   an unrelated word (ornatus, latus, inflatus, striata) is the adjective, reasonably inferred; D&G's birds
+   decline them too. Finals -philus, -collis, -genis, -gerus, -ferus, -cerus, -rhinus, -ophthalmus, -chrous are
+   adjectival; -nota is the feminine of -notus "-backed" (reasonably inferred; nota "mark" possible).
+5. **A noun whose accepted spelling differs from the original is never written**: that is an Art. 33 question
+   and goes to the wiki list. An adjective whose ending changed with its genus is ordinary agreement (Art. 34.2).
+6. **Values on production that the evidence contradicts** come out as a corrections file for
+   `correct_protonym_fields.rb` (WRITE_REQUESTS = every request that wrote or corrected the fields).
+7. Outputs: `write_input.tsv`, `corrections.tsv`, `wiki_list.tsv` (by issue: noun_spelling_changed,
+   author_noun_form_adjective, proper_noun_or_adjective, noun_stem_other_ending, author_adjective_form_not,
+   adjective_not_agreeing, noun_or_adjective), `unresolved.tsv`, `decisions.tsv` (every decision with its reason).
+   Audit each group by reading the decisions, as after any write.
+

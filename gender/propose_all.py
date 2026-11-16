@@ -30,7 +30,7 @@ import argparse, collections, csv, hashlib, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lexicon import load, lookup, fold  # noqa: E402
-from compounds import Parser  # noqa: E402
+from compounds import Parser, FINALS_INFERRED  # noqa: E402
 
 csv.field_size_limit(sys.maxsize)
 NOUN_STATEMENT = re.compile(r'\bnoun\b|apposition|substantiv', re.I)
@@ -116,11 +116,20 @@ def q4(parser, lsj_keys, epithet, locality=''):
     if c:
         kind, a, b, first, final = c
         evc = f"{kind}: {' + '.join(x for x, _ in first)} + {b}; {final}"
+        if kind == 'adjectival-from-noun' and b in FINALS_INFERRED:
+            return 'compound_adjective_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', evc
         if kind in ('adjective-final', 'adjectival-from-noun', 'one-termination'):
             return 'compound_adjective_pos', 'adjective', 'grammatical_form', 'demonstrated', evc
-        if kind == 'derived-adjective':
+        if kind in ('derived-adjective', 'adjective-final (noun homonym)'):
             return 'compound_adjective_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', evc
         return 'held', '', '', '', 'noun-final compound (Rule 1.6): ' + evc
+    if not gr and not rs and len(e) >= 6 and re.search(r'(a|um)$', e) and not re.search(r'icum$', e):
+        # the feminine or neuter of a Latinized Greek adjective in -os (brachypterum from brachypteros, anomala from
+        # anomalos). The match is by transliteration, so reasonably inferred (16 Nov 2026)
+        g2 = lsj_keys.get(re.sub(r'(a|um)$', 'us', e), [])
+        if g2 and {g['kind'] for g in g2} == {'adjective'}:
+            return 'greek_form_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', \
+                f"Greek {g2[0]['headword']} (adjective), Latinized -us, -a, -um: {g2[0]['gloss'][:40]}"
     # adjectival suffixes on words no dictionary lists (A&G 249, 241-243): the masculine and neuter forms cannot be
     # personal names; -ica, -ana, -ina can (Monica, Mariana, Christina), so those are only reasonably inferred or held
     if re.search(r'(escens|ascens)$', e):

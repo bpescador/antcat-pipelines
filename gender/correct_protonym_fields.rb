@@ -37,16 +37,16 @@ INPUT_COLUMNS = %w[protonym_id protonym_name action field written_value new_valu
 FIELDS = %w[gender_agreement_type part_of_speech_basis interpretation_status etymology_derivation].freeze
 UPDATE_VALUES = {
   'gender_agreement_type' => %w[adjective participle noun_in_apposition],
-  'part_of_speech_basis' => %w[grammatical_form],
+  'part_of_speech_basis' => %w[grammatical_form author_stated noun_by_default],
   'interpretation_status' => %w[demonstrated reasonably_inferred]
 }.freeze
 SUMMARY = {
   'revert' => '[automated] Correction after an audit (16 Nov 2026): the part of speech, its basis and the ' \
               'interpretation status recorded earlier today are removed; the reading was not confirmed (a false ' \
               'compound split or a misread dictionary entry) and is held for review. Spelling unchanged',
-  'update' => '[automated] Correction after an audit (16 Nov 2026) of the dictionary readings and compound parses: ' \
-              'the part of speech or interpretation status recorded earlier today is corrected; under the AntCat ' \
-              'policy on name grammar and spelling. Spelling unchanged'
+  'update' => '[automated] Correction after an audit (16 Nov 2026) of the dictionary readings, the compound parses ' \
+              'and the original descriptions: the part of speech, its basis or the interpretation status recorded ' \
+              'by AntCatBot is corrected; under the AntCat policy on name grammar and spelling. Spelling unchanged'
 }.freeze
 
 DONE = { 'revert' => 'reverted', 'update' => 'updated' }.freeze
@@ -126,7 +126,8 @@ groups.each do |pid, g|
       assign = {}
       g.each do |r|
         f = r['field']
-        change = versions.map { |v| v.changeset[f] }.compact.last
+        changes = versions.map { |v| v.changeset[f] }.compact
+        change = changes.last
         if change.nil?
           # "already": the value was there before the write; not the write's to correct, and never replaced
           raise Reject, "#{f} was set before the write" if action == 'update'
@@ -135,7 +136,8 @@ groups.each do |pid, g|
         elsif change.last.to_s != r['written_value']
           raise Reject, "the write stored #{change.last.inspect} in #{f}, not #{r['written_value'].inspect}"
         else
-          target = action == 'revert' ? change.first : r['new_value']
+          # a revert goes back to the value before the first of the listed requests (a write, then a correction)
+          target = action == 'revert' ? changes.first.first : r['new_value']
           results[f][:new] = target
           assign[f] = target
         end

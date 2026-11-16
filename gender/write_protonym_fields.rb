@@ -160,10 +160,47 @@ RULES = {
   # Greek words Latinized (Art. 31.2.3, melaena): adjective; Greek nouns: noun in apposition.
   'greek_form_pos' => {
     fields: { 'gender_agreement_type' => %w[adjective noun_in_apposition], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[demonstrated reasonably_inferred] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded from the Greek word (Liddell-Scott-Jones); under the ' \
+             'AntCat policy on name grammar and spelling. Spelling unchanged'
+  },
+  # Brian, 16 Nov 2026 10:40: "I can't review all these names: you have to use insect knowledge: refer to TW ..., the
+  # ocr of the literature ..., the pdfs in Background reading for ICZN ... we may only offer a wiki for the difficult
+  # ones". From then Claude decides the held names by gender/resolve_held.py; its tables and reasons are the record.
+  # What the original description itself says (gender/extract_stated_grammar.py): noun in apposition, adjective, or an
+  # arbitrary combination of letters (indeclinable, Art. 31.2.3).
+  'author_stated_pos' => {
+    fields: { 'gender_agreement_type' => %w[noun_in_apposition adjective participle indeclinable],
+              'part_of_speech_basis' => %w[author_stated not_latin],
               'interpretation_status' => %w[demonstrated] },
     hold_sourced_etymology: false,
-    summary: '[automated] Part of speech recorded from the Greek word (Liddell-Scott-Jones); demonstrated; under the ' \
+    summary: '[automated] Part of speech recorded as stated in the original description; demonstrated; under the ' \
              'AntCat policy on name grammar and spelling. Spelling unchanged'
+  },
+  # Art. 31.2.2 as read by David & Gosselin 2011 (AntCat's adopted reading, 13 Nov), policy Rules 1.5 and 1.6: a name
+  # spelled as a noun in its own nominative (a compound ending in such a noun, a Latin noun that is also an adjective,
+  # a proper noun, a place name used unchanged), with no indication of an adjective in the original description.
+  # Never written where the accepted spelling differs from the original (wiki list).
+  'noun_by_default_pos' => {
+    fields: { 'gender_agreement_type' => %w[noun_in_apposition noun_in_genitive_case],
+              'part_of_speech_basis' => %w[noun_by_default grammatical_form],
+              'interpretation_status' => %w[reasonably_inferred] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: noun in apposition by default (the epithet is spelled as a noun and ' \
+             'the original description gives no indication of an adjective; Art. 31.2.2, policy Rules 1.5 and 1.6); ' \
+             'reasonably inferred. Spelling unchanged'
+  },
+  # Word-by-word judgments (tables in gender/resolve_held.py): a Latin adjective or participle whose noun homonym is
+  # its verbal noun or an unrelated word (ornatus, latus, striata), an adjective formed on a noun stem (castaneus,
+  # ophthalmica), the feminine of a geographical adjective (corsica, argentina).
+  'judged_adjective_pos' => {
+    fields: { 'gender_agreement_type' => %w[adjective participle], 'part_of_speech_basis' => %w[grammatical_form],
+              'interpretation_status' => %w[reasonably_inferred] },
+    hold_sourced_etymology: false,
+    summary: '[automated] Part of speech recorded: a Latin adjective or participle (a noun of the same spelling is a ' \
+             'possible alternative); reasonably inferred; under the AntCat policy on name grammar and spelling. ' \
+             'Spelling unchanged'
   }
 ).freeze
 

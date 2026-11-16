@@ -47,7 +47,7 @@ NOUN_FINALS = {
     'cephalus': ('kephale (Greek)', 'head', ()), 'cephala': ('kephale (Greek)', 'head', ()),
     'cephalum': ('kephale (Greek)', 'head', ()), 'gnathus': ('gnathos (Greek)', 'jaw', ('gnathus',)),
     'gnatha': ('gnathos (Greek)', 'jaw', ()), 'gnathum': ('gnathos (Greek)', 'jaw', ()),
-    'notus': ('notos/notum', 'back', ('notus', 'notum')), 'nota': ('nota', 'mark', ('nota',)),
+    'notus': ('notos/notum', 'back', ('notus', 'notum')), 'nota': ('notos/notum', 'back', ()),
     'notum': ('notum', 'back', ('notum',)), 'ura': ('oura (Greek)', 'tail', ('ura',)), 'urus': ('oura (Greek)', 'tail', ()),
     'gaster': ('gaster (Greek)', 'belly', ('gaster',)), 'gastra': ('gaster (Greek)', 'belly', ()),
     'gastrum': ('gaster (Greek)', 'belly', ()), 'gastrus': ('gaster (Greek)', 'belly', ()),
@@ -56,7 +56,26 @@ NOUN_FINALS = {
     'soma': ('soma (Greek)', 'body', ('soma',)), 'cola': ('colo (verb)', 'dweller', ('cola',)), 'colus': ('colo (verb)', 'dweller', ()),
     'fer': ('fero (verb)', 'bearing', ()), 'fera': ('fero (verb)', 'bearing', ()), 'ferum': ('fero (verb)', 'bearing', ()),
     'ger': ('gero (verb)', 'bearing', ()), 'gera': ('gero (verb)', 'bearing', ()), 'gerum': ('gero (verb)', 'bearing', ()),
+    # 16 Nov 2026, second audit (Brian: decide from the literature). -ferus and -gerus can only be adjectives (David &
+    # Gosselin 2011: no classical Latin noun ends so); -philus is the Latinized Greek adjective philos, declined
+    # -us, -a, -um (D&G 2011, "The adjective nesophilus"); -collis and -genis are Poultney's Type B adjectives from
+    # collum and gena (the noun collis 'hill' is a homonym); -cerus and -rhinus are Latinized Greek compound adjectives.
+    'ferus': ('fero (verb)', 'bearing', ()), 'gerus': ('gero (verb)', 'bearing', ()),
+    'philus': ('philos (Greek adjective)', 'fond of', ()), 'phila': ('philos (Greek adjective)', 'fond of', ()),
+    'philum': ('philos (Greek adjective)', 'fond of', ()),
+    'collis': ('collum', 'neck', ()), 'colle': ('collum', 'neck', ()), 'genis': ('gena', 'cheek', ()),
+    'cerus': ('keras (Greek)', 'horn', ()), 'cerum': ('keras (Greek)', 'horn', ()),
+    'rhinus': ('rhis (Greek)', 'nose', ()), 'rhina': ('rhis (Greek)', 'nose', ()), 'rhinum': ('rhis (Greek)', 'nose', ()),
+    # -nota in ant names is the feminine of -notus "-backed" (pronotum, mesonotum), as Brian's audit of 13 Nov read
+    # altinota and its kind; the Latin noun nota "mark" stays a possible alternative (wiki 16, Rule 1.6), so
+    # propose_all gives these "reasonably inferred". -chrous, -a, -um and -ophthalmus, -a, -um are Latinized Greek
+    # compound adjectives (dichroos, melanophthalmos).
+    'chroa': ('chros (Greek)', 'colour', ()), 'chrous': ('chros (Greek)', 'colour', ()), 'chroum': ('chros (Greek)', 'colour', ()),
+    'ophthalmus': ('ophthalmos (Greek)', 'eye', ()), 'ophthalma': ('ophthalmos (Greek)', 'eye', ()),
+    'ophthalmum': ('ophthalmos (Greek)', 'eye', ()),
 }
+# listed finals whose adjectival reading has a possible alternative: reasonably inferred, not demonstrated
+FINALS_INFERRED = {'nota', 'chroa'}
 # Latin compounds in -pes, -dens, -color, -frons, -ceps are one-termination adjectives (bipes, bidens, bicolor,
 # bifrons, anceps in Lewis & Short): the spelling never changes, whatever the reading
 ONE_TERMINATION = {'pes', 'dens', 'color', 'frons', 'ceps'}
@@ -141,6 +160,8 @@ class Parser:
             return True
         if b == 'oides':
             return len(a) >= 3
+        if b in NOUN_FINALS and b[:1] in 'aeiou' and len(a) >= 5 and first and not first[-1][1].startswith('prefix'):
+            return True  # the connecting vowel is dropped before a vowel: chrys + urus, erythr + ops (not cycl + ops)
         return a.endswith(('i', 'o')) and len(a) >= 4
 
     def genitive(self, e):
@@ -173,7 +194,7 @@ class Parser:
         if self.genitive(e):
             r = self.genitive(e)
             return ('genitive', e, '', [(e, 'genitive')], f"genitive of Latin {r['headword']} ({r['itype']}, L&S {r['entry']})")
-        best = None
+        best, best_rank = None, None
         for i in range(2, len(e) - 2):
             a, b = e[:i], e[i:]
             if b in NOUN_FINALS:
@@ -187,6 +208,14 @@ class Parser:
                 continue  # short Latin words (anus, ana) give false splits: cub + anus
             elif len(b) <= 6 and b[1:] in SUFFIX_FORMS:
                 continue
+            elif (any(g['kind'] == 'noun' for g in self.gr_keys.get(b, [])) or
+                  (self.noun_formation(b) or ('',))[0] == 'noun-final') and \
+                    [r for r in lookup(self.ls, b) if r['kind'] in ('adjective', 'participle')]:
+                # the final is a form of a Latin adjective or participle and also spells a noun (semi + striata:
+                # striatus, and striata a shellfish; sub + tonsa: tonsus, and tonsa an oar). After a prefix or a
+                # combining form the adjective is the reading; the noun stays a possible alternative (16 Nov 2026)
+                r = [r for r in lookup(self.ls, b) if r['kind'] in ('adjective', 'participle')][0]
+                kind, final = 'adjective-final (noun homonym)', f"Latin {r['headword']} ({r['kind']}): {r['gloss'][:40]}"
             elif any(g['kind'] == 'noun' for g in self.gr_keys.get(b, [])):
                 g = next(g for g in self.gr_keys[b] if g['kind'] == 'noun')
                 kind, final = 'noun-final', f"Greek {g['headword']} (noun, Latinized nominative): {g['gloss'][:40]}"
@@ -204,11 +233,13 @@ class Parser:
             first = self.first_part(a)
             if not first or not self.junction(a, b, first):
                 continue
-            if a in WEAK_PREFIXES and (kind != 'adjective-final' or (len(b) < 6 and e.replace('u', 'v') not in {w.replace('u', 'v') for w in WEAK_PREFIX_CHECKED})):
+            if a in WEAK_PREFIXES and (not kind.startswith('adjective-final') or (len(b) < 6 and e.replace('u', 'v') not in {w.replace('u', 'v') for w in WEAK_PREFIX_CHECKED})):
                 continue
             cand = (kind, a, b, first, final)
-            if best is None or len(b) > len(best[2]):
-                best = cand
+            # a listed final element (cornis, urus, ops) outranks a longer dictionary word found by chance (s + urus)
+            rank = (b in NOUN_FINALS, len(b))
+            if best is None or rank > best_rank:
+                best, best_rank = cand, rank
         if best is None:
             best = self.derived_adjective(e)
         return best

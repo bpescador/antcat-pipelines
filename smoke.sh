@@ -126,6 +126,25 @@ assert p.genitive('victoris') is not None and p.genitive('stipitum') is not None
 p.gen_endings.update({'alis': [('cervical', {})], 'inis': [('caligo', {})]})
 assert p.genitive('nigricornis') is None and p.genitive('cervicalis') is None and p.genitive('calinum') is None
 PY
+# Second audit, 16 Nov 2026 (Brian: decide the held names from the evidence): -philus, -collis, -genis, -gerus are
+# adjectival finals; a listed final outranks a longer chance word (chrys + urus, not chry + surus); the author's
+# statement is read from the species' own account; resolve_held never writes a noun whose spelling was changed
+PYTHONPATH=gender python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: compound finals or stated-grammar reading of 16 Nov lost (gender/compounds.py, extract_stated_grammar.py, resolve_held.py)"; fail=1; }
+from compounds import NOUN_FINALS, FINALS_INFERRED
+for f in ('philus', 'phila', 'collis', 'genis', 'gerus', 'ferus', 'nota', 'ophthalma'):
+    assert f in NOUN_FINALS and NOUN_FINALS[f][2] == (), f
+assert NOUN_FINALS['spina'][2] == ('spina',) and 'nota' in FINALS_INFERRED
+from extract_stated_grammar import STATED, HEADING
+flags = lambda t: {n for n, rx in STATED if rx.search(t)}
+assert 'noun_in_apposition' in flags('The name is a noun in apposition and thus invariant')
+assert 'arbitrary' in flags('The species epithet is an arbitrary combination of letters')
+assert 'adjective' in flags('Latin griseus; adjective in the nominative singular') and HEADING.search('Etymology. Named for')
+import resolve_held as R
+assert R.EXPLICIT_NOUN.search('to be treated as a noun in apposition') and not R.EXPLICIT_NOUN.search('Non-Latin noun, named after the collector')
+assert R.OTHER_NAME.match('C. flavopectus derives from Latin').group(1) == 'flavopectus'
+assert 'faber' in R.BOTH_NOUN and 'ornatus' not in R.BOTH_NOUN and R.ALTERED['inca'] == 'N'
+PY
+grep -q "noun_spelling_changed" gender/resolve_held.py || { echo "TRIPWIRE: gender/resolve_held.py writes nouns whose accepted spelling was changed"; fail=1; }
 grep -q "a.get('type') == 'spur'" gender/lexicon.py || { echo "TRIPWIRE: L&S false readings (type=spur) indexed again in gender/lexicon.py"; fail=1; }
 for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
 PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }
