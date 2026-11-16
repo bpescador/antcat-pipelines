@@ -29,7 +29,11 @@ from lexicon import fold, load, lookup  # noqa: E402
 PREFIXES = ['sub', 'super', 'semi', 'prae', 'pro', 'post', 'ante', 'inter', 'intra', 'extra', 'trans', 'circum',
             'uni', 'bi', 'tri', 'quadri', 'quinque', 'sex', 'multi', 'pluri', 'omni', 'per', 'ob', 'in', 'con', 'dis',
             'ex', 'de', 'ad', 're', 'hemi', 'poly', 'oligo', 'eu', 'dys', 'pseudo', 'para', 'meta', 'epi', 'hypo',
-            'hyper', 'pan', 'iso', 'homo', 'hetero', 'mono', 'di', 'a', 'an', 'micro', 'macro', 'mega', 'megalo']
+            'hyper', 'pan', 'iso', 'homo', 'hetero', 'mono', 'di', 'a', 'an', 'micro', 'macro', 'mega', 'megalo',
+            'decem', 'octo', 'septem', 'novem', 'sesqui', 'non', 'syn', 'sym', 'brachy', 'platy', 'leio', 'lio']
+# Greek prefixes drop their final vowel before a vowel (micr + ophthalma, macr + odonta, mon + odonta)
+ELIDED = {'micr': 'micro', 'macr': 'macro', 'mon': 'mono', 'olig': 'oligo', 'hem': 'hemi', 'pseud': 'pseudo',
+          'meg': 'mega', 'megal': 'megalo', 'iso': 'iso', 'is': 'iso', 'heter': 'hetero', 'hom': 'homo', 'poly': 'poly'}
 # final elements formed from a noun, with the noun and its own nominative endings (Latin, or Latinized Greek)
 NOUN_FINALS = {
     'cornis': ('cornu', 'horn', ()), 'cornus': ('cornu', 'horn', ()), 'ceps': ('caput', 'head', ()),
@@ -57,6 +61,13 @@ NOUN_FINALS = {
 # bifrons, anceps in Lewis & Short): the spelling never changes, whatever the reading
 ONE_TERMINATION = {'pes', 'dens', 'color', 'frons', 'ceps'}
 ENDINGS = r'(us|a|um|is|e|er|ra|rum|os|on|es|ys|x|s)$'
+# a "final word" that is one letter plus an adjectival suffix (c + anus, c + alis, b + icum, l + atum) is a false
+# split of a suffixed word (costarica + nus, apic + alis): never a compound's final element (audit 16 Nov 2026)
+SUFFIX_FORMS = {'anus', 'ana', 'anum', 'icus', 'ica', 'icum', 'inus', 'ina', 'inum', 'alis', 'ale', 'aris', 'are',
+                'osus', 'osa', 'osum', 'atus', 'ata', 'atum', 'itus', 'ita', 'itum', 'ensis', 'ense', 'oris', 'onis'}
+# short Latin prefixes also begin many simple words (con + icara, in + acatum): after them only a real adjective or
+# participle counts as the final element
+WEAK_PREFIXES = {'a', 'an', 'ad', 'de', 'di', 'dis', 'ex', 'in', 'ob', 're', 'con', 'per', 'pro', 'eu'}
 
 
 class Parser:
@@ -71,7 +82,7 @@ class Parser:
                     if r['kind'] == 'noun':
                         self.gr_noun_stems.setdefault(r['stem'], r)
                 self.gr_keys.setdefault(r['key'], []).append(r)
-        self.la_stems, self.noun_stems = {}, {}
+        self.la_stems, self.noun_stems, self.gen_endings = {}, {}, {}
         for key, rs in self.ls.items():
             for r in rs:
                 if r['kind'] in ('adjective', 'noun', 'participle', 'verb'):
@@ -80,6 +91,8 @@ class Parser:
                     if r['kind'] == 'adjective' and key.endswith('er'):
                         stems.add(key[:-2] + 'r')  # niger -> nigr, ruber -> rubr (nigricornis)
                     gen = (fold(r['itype']).split() or [''])[0].strip(' ,.;')
+                    if r['kind'] == 'noun' and re.fullmatch(r'[a-z]{1,6}is', gen):
+                        self.gen_endings.setdefault(gen, []).append((key, r))
                     # oblique stem from the genitive (femur, oris -> femor; pecten, inis -> pectin; pes, pedis -> ped)
                     if r['kind'] == 'noun' and re.fullmatch(r'[a-z]{2,7}is', gen):
                         stems.add(gen[:-2] if gen[0] == key[0] and len(gen) > 4 else key[:-2] + gen[:-2])
@@ -94,6 +107,8 @@ class Parser:
         """Identify a combining form (with its connecting vowel), or a prefix, possibly two."""
         if a in PREFIXES:
             return [(a, 'prefix')]
+        if a in ELIDED:
+            return [(a, f'prefix {ELIDED[a]}- before a vowel')]
         for core in (a[:-1] if a.endswith(('i', 'o')) else None, a):
             if core and len(core) >= 3:
                 if core in self.la_stems:
@@ -109,6 +124,34 @@ class Parser:
                     return [(p, 'prefix')] + rest
         return []
 
+    def junction(self, a, b, first):
+        """True where the first element ends as a combining form does: a prefix, a stem with its connecting vowel
+        (lamelli + cornis, macro + dentatus), or a stem before -oides (formic + oides). Splits inside a word (abd +
+        ominalis, lith + ophila, stri + atella) fail (audit 16 Nov 2026)."""
+        if a in PREFIXES:
+            return True
+        if a in ELIDED and b[:1] in 'aeiouy':
+            return True
+        if b == 'oides':
+            return len(a) >= 3
+        return a.endswith(('i', 'o')) and len(a) >= 4
+
+    def genitive(self, e):
+        """A third-declension genitive of a Lewis & Short noun (victoris from victor, oris; stolonis; stipitum from
+        stipes, itis; continentis): a noun in the genitive case, never a compound adjective. -> the noun's row or None"""
+        if not re.search(r'(is|um)$', e) or len(e) < 6:
+            return None
+        sg = e[:-2] + 'is' if e.endswith('um') else e
+        for key, r in self.gen_endings.get(sg, []):
+            if key[:2] == sg[:2]:
+                return r  # L&S prints the whole genitive (dens, dentis; pes, pedis)
+        for n in range(3, 7):
+            st = sg[:-n]
+            for key, r in self.gen_endings.get(sg[-n:], []):
+                if key.startswith(st) and len(st) >= max(3, len(key) - 3):
+                    return r
+        return None
+
     def parse(self, epithet):
         e = fold(epithet)
         for v in (e, e.replace('y', 'i'), re.sub(r'([^a])e', r'\1ae', e, count=1) if 'se' in e else e):
@@ -118,6 +161,9 @@ class Parser:
         return None
 
     def _parse(self, e):
+        if self.genitive(e):
+            r = self.genitive(e)
+            return ('genitive', e, '', [(e, 'genitive')], f"genitive of Latin {r['headword']} ({r['itype']}, L&S {r['entry']})")
         best = None
         for i in range(2, len(e) - 2):
             a, b = e[:i], e[i:]
@@ -130,6 +176,8 @@ class Parser:
                 final = f'{b} from {noun}, {gloss!r}'
             elif len(b) < 5:
                 continue  # short Latin words (anus, ana) give false splits: cub + anus
+            elif len(b) <= 6 and b[1:] in SUFFIX_FORMS:
+                continue
             elif any(g['kind'] == 'noun' for g in self.gr_keys.get(b, [])):
                 g = next(g for g in self.gr_keys[b] if g['kind'] == 'noun')
                 kind, final = 'noun-final', f"Greek {g['headword']} (noun, Latinized nominative): {g['gloss'][:40]}"
@@ -145,7 +193,9 @@ class Parser:
                 else:
                     continue
             first = self.first_part(a)
-            if not first:
+            if not first or not self.junction(a, b, first):
+                continue
+            if a in WEAK_PREFIXES and kind != 'adjective-final':
                 continue
             cand = (kind, a, b, first, final)
             if best is None or len(b) > len(best[2]):
@@ -190,7 +240,9 @@ class Parser:
                         return ('derived-adjective', stem, suf, [(stem, f"Latin {r['headword']} ({r['kind']}): {r['gloss'][:40]}")],
                                 f'-{suf}, adjective-forming suffix')
                 first = self.first_part(stem)
-                if first:
+                # the suffixes are Latin (A&G 241-249): the stem they form on must be Latin too (not inac + atum
+                # from Greek einakis; audit 16 Nov 2026)
+                if first and first[-1][1].startswith('Latin'):
                     return ('derived-adjective', stem, suf, first, f'-{suf}, adjective-forming suffix')
         return None
 

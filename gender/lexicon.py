@@ -33,11 +33,16 @@ def tag(body, name):
     return re.sub(r'<[^>]+>', '', m.group(1)).strip() if m else ''
 
 
-def kind_of(itype, gen, pos, body, orth=''):
+def kind_of(itype, gen, pos, body, orth='', key=''):
     head = re.sub(r'<[^>]+>', '', body[:600])
-    if orth[:1].isupper():
+    # L&S prints some proper-noun headwords in lower case (orth "īcărus", key "Icarus"): the key decides too
+    if orth[:1].isupper() or key[:1].isupper():
         # a capitalized adjective (Gallicus, Romanus) is an adjective; a capitalized noun is a proper noun
-        if not gen and ('adj' in pos or re.fullmatch(r'(\w*a, \w*um|is, e|\w*is, \w*e)', itype)):
+        # an adjective's own inflection (Afer, fra, frum; Aeolius, a, um) decides even where a substantive use
+        # inside the headword's grammar (Afer, a native of Africa) supplies a gender (audit 16 Nov 2026)
+        if re.fullmatch(r'(\w*a, \w*um|is, e|\w*is, \w*e)', itype):
+            return 'adjective'
+        if not gen and 'adj' in pos:
             return 'adjective'
         return 'proper noun'
     if re.search(r'\bP\. a\.', head):
@@ -57,6 +62,17 @@ def kind_of(itype, gen, pos, body, orth=''):
     return 'other'
 
 
+def headword_segment(body):
+    """The entry up to the first headword printed after its first sense closes. Derived words (Icarus ...
+    Derivv. Icarius, a, um, adj.) are printed in later senses; spellings of the headword itself (avus, also
+    avos; vomer ... collat. form vomis) stand in the grammar run or inside the first sense."""
+    end = body.find('</sense>')
+    if end < 0:
+        return body
+    nxt = re.search(r'<orth\b', body[end:])
+    return body[:end + nxt.start()] if nxt else body
+
+
 def build(ls_path, out_path):
     text = open(ls_path, encoding='utf-8').read()
     n = 0
@@ -66,15 +82,20 @@ def build(ls_path, out_path):
         for attrs, body in ENTRY_RE.findall(text):
             a = dict(ATTR_RE.findall(attrs))
             key = fold(re.sub(r'\d+$', '', a.get('key', '')))
-            if not key:
-                continue
+            if not key or a.get('type') == 'spur':
+                continue  # type="spur": a false reading L&S records only to reject it (Obsidianus)
             orth = html.unescape(tag(body, 'orth'))
-            itype, gen, pos = tag(body, 'itype'), tag(body, 'gen'), tag(body, 'pos')
+            # the headword's own itype, gen and pos stand before the next headword printed inside the entry; a
+            # derived word (Icarus ... Derivv. Icarius, a, um, adj.) must not lend the headword its part of
+            # speech. <sense> is no boundary: Perseus opens the first sense mid-grammar.
+            head = headword_segment(body)
+            itype, gen, pos = tag(head, 'itype'), tag(head, 'gen'), tag(head, 'pos')
             gloss = ''
             m = re.search(r'<sense\b[^>]*>(.*?)</sense>', body, re.S)
             if m:
                 gloss = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(1))).strip()[:120]
-            w.writerow([key, orth, kind_of(itype, gen, pos, body, orth), itype, gen, pos, a.get('id', ''), gloss])
+            w.writerow([key, orth, kind_of(itype, gen, pos, body, orth, a.get('key', '')), itype, gen, pos,
+                        a.get('id', ''), gloss])
             n += 1
     print(f'{n} entries -> {out_path}')
 

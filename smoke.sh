@@ -103,10 +103,30 @@ assert L('Norfolk', 'Australia (Norfolk I.)') == 'Norfolk Island' and L('Norfolk
 # The general write runner (14 Nov 2026): never overwrites, holds open readings, each field its own result.
 if ruby -e 'exit(RUBY_VERSION >= "3.0" ? 0 : 1)' 2>/dev/null; then
   ruby gender/selftest_write_protonym_fields.rb >/dev/null 2>&1 || { echo "TRIPWIRE: gender/selftest_write_protonym_fields.rb fails (field results of write_protonym_fields.rb)"; fail=1; }
+  # The correction runner (16 Nov 2026): touches only what the write set, never a value someone else entered
+  ruby gender/selftest_correct_protonym_fields.rb >/dev/null 2>&1 || { echo "TRIPWIRE: gender/selftest_correct_protonym_fields.rb fails (field results of correct_protonym_fields.rb)"; fail=1; }
 else
-  echo "WARN: ruby 3 not found -- gender/selftest_write_protonym_fields.rb skipped (not a commit blocker)"
+  echo "WARN: ruby 3 not found -- gender/selftest_*_protonym_fields.rb skipped (not a commit blocker)"
 fi
-for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
+# Audit of the combined write (16 Nov 2026): L&S proper nouns printed in lower case (icarus) and a derived word's
+# adj. (Icarius) made adjectives; Afer, fra, frum stays one; false compound splits (abd + ominalis, lith + ophila);
+# third-declension genitives (victoris, stipitum) are not compounds; L&S false readings (type="spur") are no entries
+PYTHONPATH=gender python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: dictionary-reading or compound fixes of 16 Nov lost in gender/lexicon.py or gender/compounds.py"; fail=1; }
+from lexicon import kind_of as K, headword_segment as H
+from compounds import Parser
+assert K('i', 'm.', '', '<orth>x</orth>', 'īcărus', 'Icarus') == 'proper noun'
+assert K('fra, frum', 'm.', 'adj.', '', 'āfer', 'Afer') == 'adjective'
+b = '<orth>īcărus</orth>, <itype>i</itype>, <gen>m.</gen> <sense n="I">A son of Daedalus.</sense><sense n="1"> <orth>īcărĭus</orth>, <itype>a, um</itype>, <pos>adj.</pos></sense>'
+assert '<pos>' not in H(b) and '<gen>' in H(b)
+p = object.__new__(Parser)
+assert not p.junction('abd', 'ominalis', []) and not p.junction('lith', 'ophila', []) and p.junction('lamelli', 'cornis', [])
+assert p.junction('micr', 'ophthalma', []) and p.junction('formic', 'oides', [])
+p.gen_endings = {'oris': [('victor', {})], 'itis': [('stipes', {})], 'dentis': [('dens', {})]}
+assert p.genitive('victoris') is not None and p.genitive('stipitum') is not None and p.genitive('dentis') is not None
+assert p.genitive('nigricornis') is None
+PY
+grep -q "a.get('type') == 'spur'" gender/lexicon.py || { echo "TRIPWIRE: L&S false readings (type=spur) indexed again in gender/lexicon.py"; fail=1; }
+for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done
 PYTHONPATH=gender:literature python3 -c "from verify_etymology_sources import quoted as Q; assert Q('Etymology: “This singular ant is dedicated to Dr. H. KUTTER', 'dedicated to dr h kutter') and not Q('Etymology: Dedicated to Dr. H. Kutter', 'dedicated to dr h kutter')" 2>/dev/null || { echo "TRIPWIRE: quoted later-work passages not detected in gender/verify_etymology_sources.py"; fail=1; }
 # AntCat #1617: status "unjustified emendation" maps to TW's UnjustifiedEmendation relationship
 PYTHONPATH=. python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: tw_status_diff lost the unjustified-emendation mapping"; fail=1; }

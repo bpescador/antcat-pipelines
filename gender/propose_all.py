@@ -102,6 +102,10 @@ def q4(parser, lsj_keys, epithet, locality=''):
     if gkinds == {'noun'}:
         # LSJ's labels are not reliable enough for a noun reading (leptothrix is an adjective there): later queue
         return 'held', '', '', '', f"Greek word, reading to confirm: {gr[0]['headword']} ({gr[0]['gloss'][:40]})"
+    if c and c[0] == 'genitive':
+        # victoris, stipitum: the genitive of a Latin noun (audit 16 Nov 2026); the rule for genitives of common
+        # nouns is not written yet, so these wait in the later queue
+        return 'held', '', '', '', 'a Latin noun in the genitive case: ' + c[4]
     if c:
         kind, a, b, first, final = c
         evc = f"{kind}: {' + '.join(x for x, _ in first)} + {b}; {final}"
