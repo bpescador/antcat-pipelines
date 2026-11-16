@@ -68,6 +68,13 @@ SUFFIX_FORMS = {'anus', 'ana', 'anum', 'icus', 'ica', 'icum', 'inus', 'ina', 'in
 # short Latin prefixes also begin many simple words (con + icara, in + acatum): after them only a real adjective or
 # participle counts as the final element
 WEAK_PREFIXES = {'a', 'an', 'ad', 'de', 'di', 'dis', 'ex', 'in', 'ob', 're', 'con', 'per', 'pro', 'eu'}
+# ...and that word must have six letters or more (de + supra: desupra is an adverb; eu + rytus: Eurytus is a proper
+# noun). Checked by Brian's audit of 16 Nov 2026 and kept: connexum.
+WEAK_PREFIX_CHECKED = {'connexum'}
+# A derived adjective on a stem of three letters or fewer is not evidence (osc + aris, agn + atus, lyc + osa); these
+# were checked one by one on 16 Nov 2026 and are adjectives (coxa, basis, zona, lobus, gena, favus).
+SHORT_STEM_CHECKED = {'coxalis', 'basalis', 'zonatus', 'zonata', 'lobata', 'lobatus', 'lobosa', 'genalis', 'favosus',
+                      'nanellus'}
 
 
 class Parser:
@@ -197,7 +204,7 @@ class Parser:
             first = self.first_part(a)
             if not first or not self.junction(a, b, first):
                 continue
-            if a in WEAK_PREFIXES and kind != 'adjective-final':
+            if a in WEAK_PREFIXES and (kind != 'adjective-final' or (len(b) < 6 and e.replace('u', 'v') not in {w.replace('u', 'v') for w in WEAK_PREFIX_CHECKED})):
                 continue
             cand = (kind, a, b, first, final)
             if best is None or len(b) > len(best[2]):
@@ -236,6 +243,8 @@ class Parser:
         for suf in sorted(self.DERIVING, key=len, reverse=True):
             if e.endswith(suf) and len(e) - len(suf) >= 3:
                 stem = e[: -len(suf)]
+                if len(stem) <= 3 and e.replace('u', 'v') not in {w.replace('u', 'v') for w in SHORT_STEM_CHECKED}:
+                    return None
                 for core in (stem, stem.rstrip('i'), stem + 'a', stem + 'u'):
                     r = self.la_stems.get(core) or self.la_stems.get(core.rstrip('e'))
                     if r and r['kind'] in ('noun', 'adjective'):

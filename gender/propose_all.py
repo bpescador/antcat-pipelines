@@ -71,7 +71,14 @@ def q4(parser, lsj_keys, epithet, locality=''):
         common = [r for r in common if not (r['kind'] == 'noun' and r['gen'] in ('f.', 'n.') and
                                             re.sub(r'(a|um|e)$', '', fold(r['headword'])) in stems)]
     kinds = {r['kind'] for r in common}
+    # a place in -ia spelled exactly as the epithet beside the feminine of an adjective in -ius (Aeolia and Aeolius,
+    # Ionia and Ionius): place name in apposition or the adjective, Rule 1.5 (audit 16 Nov 2026). Surnames from
+    # adjectives (Niger, Rufus) are not places and do not count.
+    places = [r for r in rs if r['kind'] == 'proper noun' and fold(r['headword']) == fold(epithet) and
+              fold(epithet).endswith('ia') and any(fold(c['headword']) == fold(epithet)[:-1] + 'us' for c in common)]
     ev = lambda rr: '; '.join(f"{r['headword']} ({r['kind']}, L&S {r['entry']}: {r['gloss'][:40]})" for r in rr[:3])
+    if places and kinds & {'adjective', 'participle'}:
+        return 'held', '', '', '', 'a proper noun (' + places[0]['headword'] + ') and an adjective form: Rule 1.5: ' + ev(common)
     if kinds and kinds <= {'adjective', 'participle'}:
         pos = 'participle' if kinds == {'participle'} else 'adjective'
         return 'latin_form_pos', pos, 'grammatical_form', 'demonstrated', ev(common)
@@ -118,6 +125,9 @@ def q4(parser, lsj_keys, epithet, locality=''):
     # personal names; -ica, -ana, -ina can (Monica, Mariana, Christina), so those are only reasonably inferred or held
     if re.search(r'(escens|ascens)$', e):
         return 'suffix_form_pos', 'participle', 'grammatical_form', 'demonstrated', 'present participle of an inchoative verb (-escens)'
+    if re.search(r'os(us|a|um)$', e) and len(e) - len(re.search(r'os(us|a|um)$', e).group(0)) <= 3 and not c:
+        # -osus forms on noun stems; three letters are no stem (Lycosa is a spider genus): not evidence
+        return 'held', '', '', '', 'the suffix -osus on a stem of three letters or fewer (lyc + osa): not evidence'
     if re.search(r'(icus|icum)$', e):
         return 'suffix_form_pos', 'adjective', 'grammatical_form', 'demonstrated', 'adjectival suffix -icus (A&G 249)'
     if re.search(r'(anus|anum|inus|inum|osus|osum|osa|ica)$', e):
