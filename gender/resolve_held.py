@@ -40,7 +40,7 @@ RANK_WORD = re.compile(r'\b(var|subsp|st|r|f|ssp|morph|ab|n|natio|forma|subvar)\
 # ---- word-by-word judgments (16 Nov 2026) --------------------------------------------------------------------
 # Latin words that are an adjective or participle and also spell a noun. Listed: the noun is a natural reading, so
 # Art. 31.2.2 applies (noun in apposition by default). Not listed: the adjective (reasonably inferred).
-BOTH_NOUN = {'anathema', 'araneolus', 'catella', 'congener', 'cunicularius', 'faber', 'gibber', 'inquilinus',
+BOTH_NOUN = {'aquila', 'belua', 'collare', 'confinium', 'electrum', 'jugum', 'spiculum', 'mina', 'ruta', 'anathema', 'araneolus', 'catella', 'congener', 'cunicularius', 'faber', 'gibber', 'inquilinus',
              'lucifuga', 'ludius', 'merula', 'moera', 'nacta', 'notula', 'parens', 'praefectus', 'rosula', 'umbra',
              'terrigena', 'occasus'}
 BOTH_UNRESOLVED = {'liber': 'liber "free" (adjective, libera) or liber "book" (noun): Podomyrma libra, 12 Nov'}
@@ -78,6 +78,10 @@ EPITHET = {  # epithet: (part of speech, basis, status, reason)
     'haemorrhoidalis': ('adjective', 'grammatical_form', 'reasonably_inferred', 'adjective in -alis'),
     'sphenoidalis': ('adjective', 'grammatical_form', 'reasonably_inferred', 'adjective in -alis'),
     'nigrocerea': ('adjective', 'grammatical_form', 'reasonably_inferred', 'nigro + cereus, waxen'),
+    'atticola': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred', 'Atta + -cola, a dweller with Atta'),
+    'andinus': ('adjective', 'grammatical_form', 'reasonably_inferred', 'of the Andes, with the suffix -inus'),
+    'atrocastanea': ('adjective', 'grammatical_form', 'reasonably_inferred', 'atro + castaneus, chestnut-brown'),
+    'hemipsila': ('adjective', 'grammatical_form', 'reasonably_inferred', 'hemi + Greek psilos, bare'),
     'desupra': ('noun_in_apposition', 'noun_by_default', 'reasonably_inferred',
                 'a Latin adverb ("from above"): treated as a noun in apposition (Art. 11.9.1)'),
 }
@@ -93,6 +97,8 @@ ARBITRARY = re.compile(r'(?i)arbitrary (?:combination|arrangement|name)|random c
 PERSON = re.compile(r"(?:named (?:after|for|in hono[u]?r of)|dedicated to|hono[u]?r of|memory of|dedicad\w+ a|"
                     r"homenagem (?:a|à|ao)|zu ehren|patronym \w+ to|hono[u]?rs)\s+(?:[a-zà-ÿ’'.,-]+\s+){0,7}[A-Z]")
 OTHER_NAME = re.compile(r'^\W*[A-Z]\.\s+([a-z]{4,})\b')
+# Matches that are chance (a Malagasy or Spanish word, a place): left unresolved.
+CHANCE = {'insutura', 'anjara', 'sisypha', 'chamela', 'palta', 'theia', 'megalocola'}
 ONE_TERMINATION = re.compile(r'(ceps|pes|dens|color|frons|ax|ex|ix|ox|ops|ans|ens)$')
 
 ADJ_STATEMENT = re.compile(
@@ -231,6 +237,15 @@ def main():
                 else:
                     decide(pid, 'correct', 'noun_in_apposition', 'author_stated', 'demonstrated', '',
                            f'recorded {have}; the author calls it a noun in apposition. ' + quote)
+            elif (have in ('adjective', 'participle') and ep in BOTH_NOUN and
+                  r['evidence'].startswith('both a Latin adjective and a noun')):
+                if ch:
+                    decide(pid, 'wiki', have, '', '', '', f'noun_spelling_changed: recorded {have}; a Latin noun in its '
+                           f'own right; accepted spelling {ch}: ' + r['evidence'][80:200])
+                else:
+                    decide(pid, 'correct', 'noun_in_apposition', 'noun_by_default', 'reasonably_inferred', '',
+                           'a Latin noun in its own right beside a rare adjective; noun in apposition by default '
+                           '(Art. 31.2.2): ' + r['evidence'][80:200])
             elif ep in ('osa', 'tosa', 'hybosa'):
                 decide(pid, 'revert', reason='-osa on a stem of three letters or fewer is no evidence of an adjective')
             elif r['rule'] == 'held' and 'a proper noun' in r['evidence'] and have == 'adjective':
@@ -274,8 +289,11 @@ def main():
                    'a dedication with a genitive ending. ' + quote)
             continue
 
-        # --- 2. propose_all's proposal
-        if r['rule'] != 'held':
+        if ep in CHANCE:
+            decide(pid, 'unresolved', reason='the dictionary match is chance: ' + r['evidence'][:150])
+            continue
+        # --- 2. propose_all's proposal, unless a word-by-word judgment exists
+        if r['rule'] != 'held' and ep not in EPITHET:
             decide(pid, 'write', r['part_of_speech'], r['basis'], r['status'], r['rule'], r['evidence'][:200])
             continue
 

@@ -59,6 +59,11 @@ def place_adjective(epithet, locality):
     return None
 
 
+# Nouns in their own right beside a rare adjective of the same stem (aquila the eagle, not aquilus "dark"; jugum the
+# yoke, not jugus): the noun is a real second reading and is not filtered as a substantive use (16 Nov 2026).
+REAL_NOUNS = {'aquila', 'belua', 'collare', 'confinium', 'electrum', 'iugum', 'jugum', 'spiculum', 'mina', 'ruta'}
+
+
 def q4(parser, lsj_keys, epithet, locality=''):
     """-> (rule, part_of_speech, basis, status, evidence) or ('held', '', '', '', reason)"""
     rs = lookup(parser.ls, epithet)
@@ -66,7 +71,7 @@ def q4(parser, lsj_keys, epithet, locality=''):
     # a feminine or neuter "noun" that is the adjective itself used as a substantive (frigida 'cold water', aurea
     # 'bridle') is not a second reading of the epithet
     adj_forms = {fold(r['headword']) for r in common if r['kind'] in ('adjective', 'participle')}
-    if adj_forms:
+    if adj_forms and fold(epithet) not in REAL_NOUNS:
         stems = {re.sub(r'(us|is|er)$', '', a) for a in adj_forms}
         common = [r for r in common if not (r['kind'] == 'noun' and r['gen'] in ('f.', 'n.') and
                                             re.sub(r'(a|um|e)$', '', fold(r['headword'])) in stems)]
@@ -123,11 +128,11 @@ def q4(parser, lsj_keys, epithet, locality=''):
         if kind in ('derived-adjective', 'adjective-final (noun homonym)'):
             return 'compound_adjective_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', evc
         return 'held', '', '', '', 'noun-final compound (Rule 1.6): ' + evc
-    if not gr and not rs and len(e) >= 6 and re.search(r'(a|um)$', e) and not re.search(r'icum$', e):
+    if not gr and not rs and len(e) >= 6 and re.search(r'(a|um)$', e) and not re.search(r'icum$|[jwk]', e):
         # the feminine or neuter of a Latinized Greek adjective in -os (brachypterum from brachypteros, anomala from
         # anomalos). The match is by transliteration, so reasonably inferred (16 Nov 2026)
         g2 = lsj_keys.get(re.sub(r'(a|um)$', 'us', e), [])
-        if g2 and {g['kind'] for g in g2} == {'adjective'}:
+        if g2 and {g['kind'] for g in g2} == {'adjective'} and not any(g['headword'].startswith('*') for g in g2):
             return 'greek_form_pos', 'adjective', 'grammatical_form', 'reasonably_inferred', \
                 f"Greek {g2[0]['headword']} (adjective), Latinized -us, -a, -um: {g2[0]['gloss'][:40]}"
     # adjectival suffixes on words no dictionary lists (A&G 249, 241-243): the masculine and neuter forms cannot be
