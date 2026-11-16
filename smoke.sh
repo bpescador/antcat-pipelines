@@ -156,6 +156,7 @@ assert R.SAYS_GENITIVE.search('to be treated as a noun in the genitive case') an
 assert R.EPITHET['eriophora'][0] == 'adjective' and R.EPITHET['micrura'][0] == 'adjective'
 assert R.EPITHET['subspongia'][0] == 'noun_in_apposition' and R.EPITHET['molossus'][0] == 'noun_in_apposition'
 assert 'euryscopa' in R.CHANCE
+assert 'IN THE ORDER THEY RAN' in src and R.DECIDED['202524'][0] == 'noun_in_apposition' and R.DECIDED['171024'][0] == 'adjective'
 PY
 grep -q "a.get('type') == 'spur'" gender/lexicon.py || { echo "TRIPWIRE: L&S false readings (type=spur) indexed again in gender/lexicon.py"; fail=1; }
 for f in gender/write_etymology_sources.rb gender/write_etymology_derivations.rb gender/write_protonym_fields.rb gender/correct_protonym_fields.rb; do ! grep -q "^require 'csv'" "$f" || { echo "TRIPWIRE: $f requires csv (LoadError under bundle exec on Ruby 4)"; fail=1; }; done

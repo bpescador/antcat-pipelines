@@ -327,5 +327,13 @@ still propose differently is listed for Brian or the next cycle, never left sile
    - finals read as Greek nouns that are feminines of Latinized adjectives: -phora (as -fera), -ura (as
      chrysurus, melanura), cacochyma, dyschima; nouns read as adjectives: -spongia, atrabilis, molossus.
    The inputs staging ran were replaced; staging keeps the first version of those rows (test data).
+9. **Re-running after a write:** `--applied` takes every write and correction input that ran on production, in
+   the order they ran. Given out of order, a name written, reverted and written again looks unrecorded and is
+   proposed a second time (48 names on 16 Nov, caught before any file left the workspace).
+10. **Drafting the wiki list is a last reading too.** Five of the 57 listed names were settled by their own
+    statement or form and moved to the next cycle (table `DECIDED`): Aenictus brutus and rotundicollis (the
+    author's noun; collis is "hill"), Pogonomyrmex pronotalis (an -alis adjective; the later work's "noun" meant
+    the stem), Eurhopalothrix circumcapillum and semicapillum (recorded adjective, but -capillum in a feminine
+    genus does not agree: the author's noun in apposition stands).
 
 

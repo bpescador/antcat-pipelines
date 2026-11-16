@@ -111,6 +111,25 @@ AUTHOR_RIGHT = {'kava', 'tinogasta', 'isoelectrum'}
 # The author calls it an adjective, but the word is not a Latin adjective: both readings go to the wiki list.
 AUTHOR_ADJ_DOUBT = {'marmar': 'Old Irish, not Latinized: indeclinable under Art. 31.2.3',
                     'solitudinis': 'the genitive of the Latin noun solitudo'}
+# Decided name by name while drafting the wiki list (16 Nov, after the production run): the statement or the form
+# settles them, so they are written or corrected, not listed. protonym_id: (part of speech, basis, status, rule, why)
+DECIDED = {
+    '202524': ('noun_in_apposition', 'author_stated', 'demonstrated', 'author_stated_pos',
+               'Aenictus brutus: the author calls it a Latinized noun, the name of the character Brutus; the '
+               'adjective brutus is not meant'),
+    '156412': ('noun_in_apposition', 'author_stated', 'demonstrated', 'author_stated_pos',
+               'Aenictus rotundicollis: the author calls it a noun for the roundly raised promesonotum: rotundi + '
+               'collis, a hill, a noun in its own nominative (not -collis from collum)'),
+    '171024': ('adjective', 'grammatical_form', 'reasonably_inferred', 'compound_adjective_pos',
+               'Pogonomyrmex pronotalis: pronotum + -alis, an adjective by form; the later work says the same (its '
+               'word "noun" refers to the stem)'),
+    '198426': ('noun_in_apposition', 'author_stated', 'demonstrated', 'author_stated_pos',
+               'Eurhopalothrix circumcapillum: the author calls it a noun in apposition; -capillum in the feminine '
+               'Eurhopalothrix does not agree, so it is not used as an adjective'),
+    '198434': ('noun_in_apposition', 'author_stated', 'demonstrated', 'author_stated_pos',
+               'Eurhopalothrix semicapillum: the author calls it a noun in apposition; -capillum in the feminine '
+               'Eurhopalothrix does not agree, so it is not used as an adjective'),
+}
 EXPLICIT_NOUN = re.compile(r'(?i)apposition|aposici|aposi[cç]|invaria|indeclin|treated as (?:a |an )?noun|must be treated as a noun')
 ARBITRARY = re.compile(r'(?i)arbitrary (?:combination|arrangement|name)|random combination|combination of letters|'
                        r'nonsense|anagram')
@@ -150,8 +169,9 @@ def main():
     ap.add_argument('--pages', required=True)
     ap.add_argument('--stated', required=True)
     ap.add_argument('--genus-gender', required=True)
-    ap.add_argument('--written', nargs='+', required=True, help='write inputs applied on production')
-    ap.add_argument('--corrections', nargs='*', default=[], help='correction inputs applied on production')
+    ap.add_argument('--applied', nargs='+', required=True,
+                    help='write and correction inputs applied on production, IN THE ORDER THEY RAN (a name written, '
+                         'reverted and written again must end as written; the kind is read from the header)')
     ap.add_argument('--out-dir', required=True)
     a = ap.parse_args()
 
@@ -165,12 +185,11 @@ def main():
     for pid, p in PP.items():
         if p['part_of_speech']:
             prod[pid] = {'gender_agreement_type': p['part_of_speech'], '_entered': True}
-    for path in a.written:
+    for path in a.applied:
         for r in read(path):
-            prod[r['protonym_id']].setdefault(r['field'], r['value'])
-    for path in a.corrections:
-        for r in read(path):
-            if r['action'] == 'revert':
+            if 'action' not in r:                       # a write input: the runner never overwrites
+                prod[r['protonym_id']].setdefault(r['field'], r['value'])
+            elif r['action'] == 'revert':
                 prod[r['protonym_id']].pop(r['field'], None)
             else:
                 prod[r['protonym_id']][r['field']] = r['new_value']
@@ -258,6 +277,15 @@ def main():
         says_arbitrary = reliable and 'arbitrary' in flags and not GEN_END.search(ep) and any(
             ARBITRARY.search(x) and not re.search(r'(?i)\bgenus\b|\bgeneric\b', x) for x in re.split(r'(?<=[.;])\s+', passage))
         ch = changed(p)
+
+        if pid in DECIDED and not prod[pid].get('_entered'):
+            pos, basis, status, rule, why = DECIDED[pid]
+            now = tuple(prod[pid].get(f) for f in ('gender_agreement_type', 'part_of_speech_basis', 'interpretation_status'))
+            if not have:
+                decide(pid, 'write', pos, basis, status, rule, why)
+            elif now != (pos, basis, status):
+                decide(pid, 'correct', pos, basis, status, '', f'recorded {have}; ' + why)
+            continue
 
         # --- names with a value on production: only contradictions are reported
         if have:
