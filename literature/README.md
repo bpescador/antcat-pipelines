@@ -40,8 +40,17 @@ citation, minus the offset, must carry the epithet (OCR errors allowed). Input: 
 
 ```
 python3 literature/page_locator.py --library ~/antcat/literature \
-    --protonyms ~/antcat/taxonworks_sync/protonym_pages_YYYYMMDD.tsv --out page_locator_YYYYMMDD.tsv
+    --protonyms ~/antcat/taxonworks_sync/protonym_pages_YYYYMMDD.tsv \
+    --references ~/antcat/taxonworks_sync/antcat_references.csv --out page_locator_YYYYMMDD.tsv
 ```
+
+`--references` (16 Nov 2026): a nested reference (a new species attributed to some of a paper's authors, a
+chapter) usually has no PDF of its own in AntCat; its nesting reference has it, and AntCat's own pages link that
+PDF. With the references export the locator reads the nesting reference's PDF (column `pdf_ref_id`). On the
+14 Nov library this moved 161 names out of class F (148 to A). Another 726 names rest on 254 nesting references
+whose PDFs were never fetched: fetch those (`pdfs/stream_reference_pdfs.rb`, `ONLY=` their ids) before the next
+library build. Any list of "references without a PDF" must likewise count a nested reference as having its
+nesting reference's PDF.
 
 First run, 14 Nov 2026 (24,377 protonyms): A 76.8%, B 1.2%, C 4.4% (82% located), D 2.3%, E 3.0%, F 12.4%
 (2,958 have no PDF in AntCat, 62 cite no arabic page).

@@ -26,6 +26,10 @@ Inputs
   --library  the library folder (pages/<ref_id>/p0001.txt ...)
   --protonyms  protonym_pages TSV from gender/protonym_pages_export.rb
   --out  output TSV (one row per protonym), plus <out>.offsets.tsv (one row per reference)
+  --references  optional: AntCat's references CSV (export_references.rb: id, type, nesting_reference_id). A nested
+     reference (a new species attributed to some of a paper's authors, a chapter) usually has no PDF of its own in
+     AntCat; with this file its nesting reference's PDF is read instead, as AntCat's own pages do. The column
+     `pdf_ref_id` names the reference whose PDF was read. Without it, 887 of 24,377 names sat in class F (14 Nov).
 Read only. Standard library only.
 """
 import argparse, collections, csv, os, re, sys, unicodedata
@@ -217,7 +221,16 @@ def main():
     ap.add_argument('--library', required=True)
     ap.add_argument('--protonyms', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--references')
     a = ap.parse_args()
+
+    nesting = {}
+    if a.references:
+        csv.field_size_limit(10 ** 9)
+        with open(a.references, newline='', encoding='utf-8') as fh:
+            for ref_row in csv.DictReader(fh):
+                if ref_row.get('nesting_reference_id'):
+                    nesting[ref_row['id']] = ref_row['nesting_reference_id']
 
     with open(a.protonyms, newline='', encoding='utf-8') as fh:
         rows = list(csv.DictReader(fh, delimiter='\t'))
@@ -228,27 +241,35 @@ def main():
     out_rows, offset_rows, counts = [], [], collections.Counter()
     for ref_id, refrows in sorted(by_ref.items()):
         texts = page_files(a.library, ref_id) if ref_id else None
+        pdf_ref_id = ref_id if texts is not None else ''
+        parent, hops = nesting.get(ref_id), 0
+        while texts is None and parent and hops < 3:  # the nesting reference's PDF (a nested one may be nested again)
+            texts = page_files(a.library, parent)
+            pdf_ref_id = parent if texts is not None else ''
+            parent, hops = nesting.get(parent), hops + 1
         offsets = offsets_for(texts) if texts else []
         ref = RefText(texts) if texts else None
         if texts is not None:
             best = offsets[0] if offsets else ('', 0, 0)
             second = offsets[1] if len(offsets) > 1 else ('', 0, 0)
-            offset_rows.append([ref_id, len(texts), best[0], best[1], best[2], second[0], second[1]])
+            offset_rows.append([ref_id, len(texts), best[0], best[1], best[2], second[0], second[1], pdf_ref_id])
         for r in refrows:
             res = locate(r, ref, offsets)
             counts[res['confidence']] += 1
             out_rows.append([r['protonym_id'], r['protonym_name'], r['epithet'], ref_id, r['authorship_pages'],
                              r['author_citation'], res['cited_page'], res['pdf_page'], res['offset'],
-                             res['offset_votes'], res['confidence'], res['match'], res['epithet_pages']])
+                             res['offset_votes'], res['confidence'], res['match'], res['epithet_pages'],
+                             pdf_ref_id])
 
     with open(a.out, 'w', newline='', encoding='utf-8') as fh:
         w = csv.writer(fh, delimiter='\t', lineterminator='\n')
         w.writerow(['protonym_id', 'protonym_name', 'epithet', 'ref_id', 'authorship_pages', 'author_citation',
-                    'cited_page', 'pdf_page', 'offset', 'offset_votes', 'confidence', 'match', 'epithet_pages'])
+                    'cited_page', 'pdf_page', 'offset', 'offset_votes', 'confidence', 'match', 'epithet_pages',
+                    'pdf_ref_id'])
         w.writerows(out_rows)
     with open(a.out + '.offsets.tsv', 'w', newline='', encoding='utf-8') as fh:
         w = csv.writer(fh, delimiter='\t', lineterminator='\n')
-        w.writerow(['ref_id', 'pdf_pages', 'offset', 'votes', 'score', 'second_offset', 'second_votes'])
+        w.writerow(['ref_id', 'pdf_pages', 'offset', 'votes', 'score', 'second_offset', 'second_votes', 'pdf_ref_id'])
         w.writerows(offset_rows)
     total = sum(counts.values())
     for c in 'ABCDEF':

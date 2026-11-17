@@ -77,6 +77,7 @@ assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251. | Subspec
 assert C('valid', 'Junior synonym of F. cinerea : Seifert, 2002 : 251.').startswith('AntCat valid')
 PY
 # literature/page_locator.py (2026-11-14): printed page numbers vote for the offset; a dropped digit counts half
+grep -q "nesting.get(ref_id)" literature/page_locator.py || { echo "TRIPWIRE: literature/page_locator.py no longer reads the nesting reference's PDF for a nested reference"; fail=1; }
 PYTHONPATH=literature python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: page offset detection broken in literature/page_locator.py"; fail=1; }
 from page_locator import offsets_for as O, RefText as R
 t = {1: 'Bull. Soc. 141\ntext', 2: '— 42 —\ntext', 3: '_ 143 —\nAtta crassispina n. sp.', 4: '144\ntext'}
