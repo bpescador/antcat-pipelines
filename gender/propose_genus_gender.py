@@ -64,6 +64,10 @@ NAMES = {
     'Myrmopiromis': ('masculine', 'an arbitrary name with no indication of gender (Art. 30.2.4)'),
     'Myrmomalis': ('masculine', 'an arbitrary name with no indication of gender (Art. 30.2.4)'),
     'Myrafant': ('masculine', 'an arbitrary name with no indication of gender (Art. 30.2.4)'),
+    # The word's own gender outranks the ending as other AntCat names use it (tier B would give the opposite):
+    # -rema names in AntCat are the feminine -crema names; -amma names are Greek neuters in -ma (gramma, stemma).
+    'Myrmotrema': ('neuter', 'Greek trema (n.), hole (Art. 30.1.2)'),
+    'Myrmopsamma': ('feminine', 'Greek psammos (f.), sand, latinized with -a (Art. 30.1.3)'),
 }
 # Misspellings and the name they misspell.
 MISSPELLINGS = {

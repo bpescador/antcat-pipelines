@@ -377,3 +377,7 @@ subgenera, the rest synonyms, obsolete combinations, homonyms and misspellings; 
   record shared with a taxon outside the input, and reports for each valid genus how many species-group taxa it
   holds. Gates as for any production write. For the six valid genera read the species' endings against the proposed
   gender before the write.
+- **Read the ending-based proposals (tiers B, B2) name by name before production.** The ending as AntCat uses it
+  is an analogy; the word's own gender outranks it (Art. 30.1). Staging on 16 Nov wrote Myrmotrema feminine (the
+  -rema pool is the -crema names; Greek trema is neuter) and Myrmopsamma neuter (the -amma pool is gramma, stemma;
+  Greek psammos is feminine): both caught in the read after staging and set in the script's `NAMES` table.
