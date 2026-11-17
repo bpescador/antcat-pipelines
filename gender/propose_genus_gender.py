@@ -68,6 +68,14 @@ NAMES = {
     # -rema names in AntCat are the feminine -crema names; -amma names are Greek neuters in -ma (gramma, stemma).
     'Myrmotrema': ('neuter', 'Greek trema (n.), hole (Art. 30.1.2)'),
     'Myrmopsamma': ('feminine', 'Greek psammos (f.), sand, latinized with -a (Art. 30.1.3)'),
+    # Decided 16 Nov 2026 (were open). Derivations from Wheeler 1956.
+    'Myrmentoma': ('feminine', 'Greek entomos, cut in, with the ending -a (Art. 30.1.3)'),
+    'Myrmhopla': ('feminine', 'Greek hoplon, tool, latinized with -a (Art. 30.1.3, as -metopa)'),
+    'Cephaloxys': ('masculine', 'ends in the Greek adjective oxys in its masculine form (Art. 30.1.2); F. Smith\'s '
+                                'capitata does not change it (Art. 30.1.4.2 covers only words of common gender)'),
+    'Forelifidis': ('masculine', 'Smith 1954a gives no derivation or gender; type species a genitive (Art. 30.2.4)'),
+    'Myrmegis': ('masculine', 'nomen nudum, no derivation, gender or species (Art. 30.2.4)'),
+    'Savignyi': ('masculine', 'nomen nudum, a list entry in error; no gender stated or indicated (Art. 30.2.4)'),
 }
 # Misspellings and the name they misspell.
 MISSPELLINGS = {
@@ -75,15 +83,9 @@ MISSPELLINGS = {
     'Lepalaea': 'Leptalea', 'Leptalaea': 'Leptalea', 'Ocodoma': 'Oecodoma', 'Tetramorum': 'Tetramorium',
     'Ceratopachys': 'Cerapachys', 'Myrtoteras': 'Myrmoteras',
 }
-# Left open on purpose, with the reason.
-OPEN = {
-    'Myrmentoma': 'entoma is a Greek neuter plural; AntCat names in -oma are neuter (4) and feminine (3)',
-    'Myrmhopla': 'hopla is a Greek neuter plural; ends in -a',
-    'Cephaloxys': 'oxys is a masculine adjective, but F. Smith combined it with capitata; read the original',
-    'Forelifidis': 'not identified',
-    'Myrmegis': 'not identified',
-    'Savignyi': 'not a genus-group name in form',
-}
+# Left open on purpose, with the reason. Empty since 16 Nov 2026: the seven names once here were decided from
+# Wheeler 1956 (Myrmecological orthoepy and onomatology), the originals and Art. 30, and are in NAMES.
+OPEN = {}
 
 
 def subject(name):

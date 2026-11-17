@@ -381,3 +381,8 @@ subgenera, the rest synonyms, obsolete combinations, homonyms and misspellings; 
   is an analogy; the word's own gender outranks it (Art. 30.1). Staging on 16 Nov wrote Myrmotrema feminine (the
   -rema pool is the -crema names; Greek trema is neuter) and Myrmopsamma neuter (the -amma pool is gramma, stemma;
   Greek psammos is feminine): both caught in the read after staging and set in the script's `NAMES` table.
+- **Done 16 Nov 2026: every genus-group record has a gender.** 448 by the runner; the 7 open names by hand through
+  the taxon form (Myrmentoma and Myrmhopla feminine, Art. 30.1.3; Cephaloxys masculine, Art. 30.1.2; Forelifidis,
+  Myrmegis and Savignyi masculine by default, Art. 30.2.4), with derivations from Wheeler 1956 (in Brian's
+  background reading) and Smith 1954a read; and 7 subgenus records corrected from the genus's gender to the
+  subgenus name's own, on Brian's go (a recorded value is never changed by the runner).
