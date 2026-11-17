@@ -359,3 +359,21 @@ accepted spelling), `## Type specimen notes`, `## Nomenclatural notes` (status).
   holds those values (part of speech, bases, interpretation status, the public "Spelling." note) and write them with
   the field runner or by hand if it does not.
 
+
+## 12. Genus-group gender (16 Nov 2026)
+
+455 genus-group taxon records had no gender on 12 Nov (`gender/gender_baseline.rb`: 6 valid genera, 59 valid
+subgenera, the rest synonyms, obsolete combinations, homonyms and misspellings; 396 distinct names).
+
+- **The gender belongs to the genus-group name** (Art. 30). A subgenus record "Genus (Subgenus)" takes the gender of
+  the subgenus name, not of the genus. Species-group names agree with the genus (Art. 31.2), so only a genus's
+  gender bears on a spelling.
+- **Proposals:** `gender/propose_genus_gender.py` (tiers in its header): the genus-rank record of the same name;
+  the ending as AntCat's genus names use it; a table of Greek and Latin final components and Art. 30.2.4;
+  misspellings take the gender of the name they misspell. 448 of 455 proposed on the 12 Nov export; 7 left open
+  with the reason. It also lists subgenus records that carry the gender of the genus they are combined with
+  (7 on 12 Nov), to correct by hand.
+- **Write:** `gender/write_genus_gender.rb`, check mode first; it never overwrites a recorded gender, holds a name
+  record shared with a taxon outside the input, and reports for each valid genus how many species-group taxa it
+  holds. Gates as for any production write. For the six valid genera read the species' endings against the proposed
+  gender before the write.
