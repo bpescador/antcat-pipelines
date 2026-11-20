@@ -14,6 +14,17 @@
 # Everything else is listed for an editor: no nested reference (create it from the publication),
 # no page match, or several matches.
 #
+# Bradley's answers (workbook returned 2026-11-20) add two kinds of rewrite:
+#   ATTRIBUTED: the work's author reports another person's act ("teste W. F. Buren in unpubl. thesis",
+#     Smith 1958c; "should be attributed to Mr. Bolton", Snelling 2007: 561). That person wrote no
+#     text in the work, so no nested reference: the citation becomes "{ref P}: pages [attributed to
+#     Author]", a citation note (AntCat #1616) the converters keep. Rule approved by Brian 2026-11-20.
+#   CITE_PARENT: the "author" is only the authority B printed after a name, or the text is B's own:
+#     the citation becomes "{ref P}: pages" (checked in the papers 2026-11-20).
+#   OVERRIDE: the nested reference Bradley named, used when the search finds none or several. It is
+#     used only if it is a nested reference whose authors include the surname and whose pages hold the
+#     cited pages; otherwise the line is held.
+#
 # Displayed change (Brian, 2026-11-08: "good plan"): "Novák, in Novák & Sadil, 1941: 97" becomes
 # "Novák, 1941: 97", linked to the nested reference (whose page says "in Novák & Sadil, 1941").
 #
@@ -34,9 +45,14 @@ Rails.logger.level = :info
 MODE = ENV.fetch('MODE', 'check')
 raise 'MODE must be check or write' unless %w[check write].include?(MODE)
 ONLY = ENV['ONLY']&.split(',')&.map(&:to_i)
-EDIT_SUMMARY = '[automated] Cite the nested reference instead of "Author, in {ref}" (claude/HISTORY_ORDER.md)'
+EDIT_SUMMARY = '[automated] Cite the nested reference, or the work with "[attributed to Author]", instead of "Author, in {ref}" (claude/HISTORY_ORDER.md)'
 
 F = Taxt::StandardHistoryItemFormats
+ATTRIBUTED = { 128854 => 'Buren', 132365 => 'Bolton', 130994 => 'Schulz' }.freeze # parent reference id => author
+# The "author" is only the name's authority as B printed it ("caffra Sm.", "pumicata Ray."), or the text is B's own
+# (Eidmann 1944: 432-437 describes his own colony's males and larvae): cite B alone.
+CITE_PARENT = [['ray', 127986], ['smith', 128288], ['menozzi', 124469]].freeze
+OVERRIDE = { ['andre', 125089] => 142486, ['kratochvil', 126504] => 126505, ['santschi', 133015] => 128337 }.freeze # [surname, parent] => nested ref
 IN_CITE = /(?<author>[[:upper:]][[:alpha:]'\-]*(?:(?: | & |-)[[:upper:]][[:alpha:]'\-]*)*), in \{ref (?<rid>\d+)\}: (?<pages>#{F::PAGINATION_MANY})/
 
 bot = User.find_by!(name: 'AntCatBot')
@@ -82,14 +98,29 @@ items.find_each do |hi|
   rows = cites.map do |c|
     rid = c[:rid].to_i
     nested, by_page = candidates(c[:author], rid, c[:pages])
+    surname = fold(c[:author].split(/ & |\s+/).last)
+    if (oid = OVERRIDE[[surname, rid]])
+      o = NestedReference.find_by(id: oid)
+      ok = o && fold(o.author_names_string_cache).include?(surname) &&
+           cited_pages(c[:pages]).all? { |pg| page_set(o.pagination).include?(pg) }
+      by_page = ok ? [o] : []
+      nested = [o].compact
+    end
+    attributed = ATTRIBUTED[rid] && fold(ATTRIBUTED[rid]) == surname
+    parent_only = CITE_PARENT.include?([surname, rid])
     result =
-      if nested.empty? then 'no nested reference'
+      if attributed then 'attributed'
+      elsif parent_only then 'cite the work itself'
+      elsif oid && by_page.empty? then 'override does not fit'
+      elsif nested.empty? then 'no nested reference'
       elsif by_page.empty? then 'no nested reference with these pages'
       elsif by_page.size > 1 then 'several nested references match'
       else 'match'
       end
-    line_ok &&= result == 'match'
+    line_ok &&= ['match', 'attributed', 'cite the work itself'].include?(result)
     new_taxt = new_taxt.sub(c[0], "{ref #{by_page.first.id}}: #{c[:pages]}") if result == 'match'
+    new_taxt = new_taxt.sub(c[0], "{ref #{rid}}: #{c[:pages]} [attributed to #{c[:author]}]") if result == 'attributed'
+    new_taxt = new_taxt.sub(c[0], "{ref #{rid}}: #{c[:pages]}") if result == 'cite the work itself'
     [result, hi.id, hi.protonym_id, c[:author], rid, Reference.find_by(id: rid)&.key_with_suffixed_year,
      c[:pages], nested.map { |n| "#{n.id} #{n.key_with_suffixed_year} (#{n.pagination})" }.join('; '),
      result == 'match' ? by_page.first.id : '']

@@ -45,6 +45,10 @@ MODE = ENV.fetch('MODE', 'check')
 raise 'MODE must be check or write' unless %w[check write].include?(MODE)
 ONLY = ENV['ONLY']&.split(',')&.map(&:to_i)
 LIMIT = ENV['LIMIT']&.to_i
+# Protonyms whose replaced name now has every homonymy as its own structured item (2026-11-20, approved by
+# Brian): the generated bracket may list more homonymies than the editors typed, as long as the line's head
+# (the replaced name and citation) is the same as displayed. Default: 157858 and 160626.
+ALLOW_TRAILER = (ENV['ALLOW_TRAILER'] || '157858,160626').split(',').map(&:to_i)
 EDIT_SUMMARY = '[automated] Convert free-text homonym, replacement-name and unavailable-name lines ' \
                'to structured history items (claude/HISTORY_ORDER.md)'
 
@@ -171,6 +175,7 @@ protonym_ids.each do |pid|
       # Trailers: accept the generated trailer if it shows the same names as the typed one, or the same
       # names plus the citation(s) of the replaced name's homonym item(s) (group A). Compared as displayed.
       cited = []
+      completed = []
       after.each_with_index do |a, i|
         e = expected[i]
         next if a == e || e.nil? || !a.start_with?('Replacement name for ')
@@ -178,6 +183,9 @@ protonym_ids.each do |pid|
           expected[i] = a # same names shown ({prottac P} typed, {taxac T} generated, T the terminal taxon of P)
         elsif !e.match?(TRAILER_CITATION) && Detax[a.gsub(TRAILER_CITATION, '')].to_s == Detax[e].to_s
           cited << i
+          expected[i] = a
+        elsif ALLOW_TRAILER.include?(pid) && Detax[a.sub(/ \[.*\z/, '')].to_s == Detax[e.sub(/ \[.*\z/, '')].to_s
+          completed << i
           expected[i] = a
         end
       end
@@ -188,6 +196,7 @@ protonym_ids.each do |pid|
       end
       shown = after.zip(before).each_with_index.map do |(a, b), i|
         if cited.include?(i) then :citation_added
+        elsif completed.include?(i) then :homonymies_completed
         elsif Detax[a].to_s == Detax[b].to_s then :same
         elsif Detax[a].to_s == Detax["#{b}."].to_s then :full_stop
         else :changed
@@ -195,6 +204,7 @@ protonym_ids.each do |pid|
       end
       result =
         if after.size != before.size || shown.include?(:changed) then 'changed'
+        elsif shown.include?(:homonymies_completed) then 'trailer_homonymies_completed'
         elsif shown.include?(:citation_added) then 'trailer_citation_added'
         elsif shown.include?(:full_stop) then 'identical_except_full_stop'
         else 'identical'
