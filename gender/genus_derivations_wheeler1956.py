@@ -75,7 +75,9 @@ def derivation(name):
     if name in BODY:
         return BODY[name] + f" (Wheeler, 1956: {PAGE[name]})."
     body = fix(it(e['full']).strip().rstrip('.'))
-    if re.match(r'(Greek|Latin|Late Greek|<i>)', body) or ' + ' in body:
+    if re.match(r'(Probably|Possibly|possibly|presumably|Presumably|probably)', body):
+        body = body[0].upper() + body[1:]   # 21 Nov: these got a doubled lead-in ("From possibly from"); 4 fixed by hand on the site
+    elif re.match(r'(Greek|Latin|Late Greek|<i>)', body) or ' + ' in body:
         body = 'From ' + body
     elif re.search(r'ologist|collector|naturalist|explorer|entomologist|^[A-Z]\. |^[A-Z][a-z]+ [A-Z]', body) and not re.match(r'(Probably|Possibly|Anagram|Given)', body):
         body = ('From ' if ' + ' in body else 'Named for ') + body
