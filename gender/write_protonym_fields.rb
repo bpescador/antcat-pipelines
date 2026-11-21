@@ -204,9 +204,13 @@ RULES = {
     },
     hold_sourced_etymology: true,
     check_genus_gender: true,
+    # AntCat's own save tidies taxt (Taxt::Cleanup); 64 genus protonyms' notes begin with a space (staging
+    # 21 Nov). That one change is let through when it alters whitespace only; anything else is still held.
+    whitespace_tidy_ok: %w[notes_taxt],
     summary: '[automated] AntCat derivation recorded for the genus-group name, from Wheeler 1956 (Myrmecological ' \
              'orthoepy and onomatology), with the gender and its basis under ICZN Art. 30; under the AntCat policy ' \
-             'on derived etymologies. Gender and spelling unchanged'
+             'on derived etymologies. Gender and spelling unchanged (a leading space in the protonym notes, where ' \
+             'present, removed by the save)'
   },
   'judged_adjective_pos' => {
     fields: { 'gender_agreement_type' => %w[adjective participle], 'part_of_speech_basis' => %w[grammatical_form],
@@ -324,16 +328,24 @@ groups.each do |pid, g|
         p.assign_attributes(assign)
         raise Reject, "invalid: #{p.errors.full_messages.join('; ')}" unless p.valid?
         extra = p.changes.keys - assign.keys
+        tidied = extra.select do |c|
+          rule.fetch(:whitespace_tidy_ok, []).include?(c) &&
+            p.public_send(c).to_s.gsub(/\s+/, '') == p.public_send("#{c}_was").to_s.gsub(/\s+/, '')
+        end
+        extra -= tidied
         raise Reject, "the save would also change #{extra.join(', ')}" if extra.any?
 
         p.save!
-        changed = p.saved_changes.keys - assign.keys - %w[updated_at]
+        changed = p.saved_changes.keys - assign.keys - %w[updated_at] - tidied
         raise Reject, "saved changes beyond the rule's fields: #{changed.join(', ')}" if changed.any?
         p.reload
         assign.each { |f, v| raise Reject, "stored #{f} differs from the input" unless p[f].to_s == v }
 
         p.create_activity(Activity::UPDATE, bot, edit_summary: rule[:summary]).update_columns(automated_edit: true)
-        assign.each_key { |f| results[f].merge!(result: MODE == 'check' ? 'would_write' : 'written') }
+        assign.each_key do |f|
+          results[f].merge!(result: MODE == 'check' ? 'would_write' : 'written',
+                            detail: tidied.any? ? "#{tidied.join(', ')}: whitespace tidied by AntCat's save" : '')
+        end
       end
       raise ActiveRecord::Rollback if MODE == 'check'
     end
