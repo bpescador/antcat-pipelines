@@ -194,6 +194,20 @@ RULES = {
   # Word-by-word judgments (tables in gender/resolve_held.py): a Latin adjective or participle whose noun homonym is
   # its verbal noun or an unrelated word (ornatus, latus, striata), an adjective formed on a noun stem (castaneus,
   # ophthalmica), the feminine of a geographical adjective (corsica, argentina).
+  # Genus-group derivations from Wheeler 1956, Myrmecological orthoepy and onomatology (AntCat reference 129837),
+  # with the gender and its basis under ICZN Art. 30 (Brian, 21 Nov 2026 13:12: "yes" to the format; files in
+  # gender/genus_derivations_wheeler1956.py). The text's gender must equal the gender every taxon of the
+  # protonym carries (check_genus_gender); names whose gender is open (wiki list) carry the derivation only.
+  'wheeler1956_genus_derivation' => {
+    fields: {
+      'etymology_derivation' => %r{\A(?:[^<>\t]|<i>|</i>){8,900} \(Wheeler, 1956: \d{1,2}\)\.(?: Gender (?:masculine|feminine|neuter): (?:[^<>\t]|<i>|</i>){10,500} \(ICZN Art\. 30\.[12](?:\.\d){1,2}\)\.)?\z}
+    },
+    hold_sourced_etymology: true,
+    check_genus_gender: true,
+    summary: '[automated] AntCat derivation recorded for the genus-group name, from Wheeler 1956 (Myrmecological ' \
+             'orthoepy and onomatology), with the gender and its basis under ICZN Art. 30; under the AntCat policy ' \
+             'on derived etymologies. Gender and spelling unchanged'
+  },
   'judged_adjective_pos' => {
     fields: { 'gender_agreement_type' => %w[adjective participle], 'part_of_speech_basis' => %w[grammatical_form],
               'interpretation_status' => %w[reasonably_inferred] },
@@ -266,6 +280,13 @@ groups.each do |pid, g|
       raise Reject, 'type locality differs from the one the proposal rests on' if
         md5.present? && Digest::MD5.hexdigest(clean(p.locality)) != md5
       raise Reject, 'has a sourced etymology' if rule[:hold_sourced_etymology] && p.etymology_taxt.present?
+      if rule[:check_genus_gender]
+        stated = g.map { |r| r['value'][/ Gender (masculine|feminine|neuter):/, 1] }.compact.uniq
+        recorded = p.taxa.map { |t| t.name.gender.to_s }.uniq
+        raise Reject, "gender in the text (#{stated.join(', ')}) differs from the taxa (#{recorded.join(', ')})" if
+          stated.any? && recorded != stated
+        raise Reject, 'not a genus-group protonym' unless p.taxa.all? { |t| t.type.in?(%w[Genus Subgenus]) }
+      end
       # someone has judged the reading open: only Brian changes that
       raise Reject, "interpretation is #{p.interpretation_status}" if
         p.interpretation_status.in?(Protonym::SCRIPTED_SPELLING_CHANGE_BLOCKED_STATUSES)
