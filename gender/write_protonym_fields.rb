@@ -195,12 +195,13 @@ RULES = {
   # its verbal noun or an unrelated word (ornatus, latus, striata), an adjective formed on a noun stem (castaneus,
   # ophthalmica), the feminine of a geographical adjective (corsica, argentina).
   # Genus-group derivations from Wheeler 1956, Myrmecological orthoepy and onomatology (AntCat reference 129837),
+  # and (21 Nov, same format) from its second edition, Wheeler & Wheeler 1984b (reference 129916),
   # with the gender and its basis under ICZN Art. 30 (Brian, 21 Nov 2026 13:12: "yes" to the format; files in
   # gender/genus_derivations_wheeler1956.py). The text's gender must equal the gender every taxon of the
   # protonym carries (check_genus_gender); names whose gender is open (wiki list) carry the derivation only.
   'wheeler1956_genus_derivation' => {
     fields: {
-      'etymology_derivation' => %r{\A(?:[^<>\t]|<i>|</i>){8,900} \(Wheeler, 1956: \d{1,2}\)\.(?: Gender (?:masculine|feminine|neuter): (?:[^<>\t]|<i>|</i>){10,500} \(ICZN Art\. 30\.[12](?:\.\d){1,2}\)\.)?\z}
+      'etymology_derivation' => %r{\A(?:[^<>\t]|<i>|</i>){8,900} \((?:Wheeler, 1956|Wheeler & Wheeler, 1984b): \d{1,2}\)\.(?: Gender (?:masculine|feminine|neuter): (?:[^<>\t]|<i>|</i>){10,500} \(ICZN Art\. 30\.[12](?:\.\d){1,2}\)\.)?\z}
     },
     hold_sourced_etymology: true,
     check_genus_gender: true,
