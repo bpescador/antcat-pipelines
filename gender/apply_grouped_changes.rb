@@ -12,6 +12,11 @@
 #                     (epithet, cleaned name and the taxon's name cache follow). The protonym's name record, which
 #                     holds the original spelling, is never touched: the row is held if the record is shared.
 #   kind protonym     record_id = protonym id; field one of PROTONYM_FIELDS; rows of one protonym are saved together
+#   kind taxon_delete record_id = taxon id; field status; old = 'unavailable misspelling', new empty. Deletes a
+#                     misspelling record only: held unless its status and name are as given and nothing links to it
+#                     (Taxon#what_links_here, as the taxon form's Delete). Before the delete the whole record (taxon,
+#                     name, protonym id, what-links-here) is written to /app/tmp/deleted_taxon_<id>_<uuid>.json.
+#                     Approved 22 Nov 2026 (Brian) for misspelling records that hold a correct original spelling.
 # `label` is the record's name as AntCat has it (the taxon's or protonym's name before the run).
 #
 # A group is held (nothing in it written) when any of its rows fails: record or label differs, the stored value is
@@ -20,9 +25,12 @@
 # value differs from `new` afterwards, or -- for a group with a name_gender row -- any species-group taxon in that
 # genus is then not spelled for the genus's gender (the condition of the database script "Species-group taxa not
 # spelled for their genus gender"), or any species-group name in it changed that is not a row of the group.
+# Historical records are not checked for agreement (Brian, 22 Nov 2026: obsolete combinations keep the spelling of
+# their source; unavailable names and misspellings are not current combinations): see HISTORICAL_STATUSES.
 #
 # Env:    MODE=check (default; always rolls back) | MODE=write; INPUT=/app/tmp/grouped_changes.tsv; ONLY=groups
-#         NAME_GENDER_SUMMARY, TAXON_NAME_SUMMARY, PROTONYM_SUMMARY: edit summaries (required for the kinds used)
+#         NAME_GENDER_SUMMARY, TAXON_NAME_SUMMARY, PROTONYM_SUMMARY, TAXON_DELETE_SUMMARY: edit summaries (required
+#         for the kinds used)
 # Output: /app/tmp/apply_grouped_changes_<MODE>_<uuid>.tsv: result, group, kind, record_id, label, field, old, new,
 #         detail
 # Edits:  AntCatBot, automated_edit: true, one request_uuid, one `update` activity per record changed (the taxon
@@ -38,13 +46,14 @@ raise 'MODE must be check or write' unless %w[check write].include?(MODE)
 INPUT = ENV.fetch('INPUT', Rails.root.join('tmp', 'grouped_changes.tsv').to_s)
 ONLY = ENV['ONLY']&.split(',')&.map(&:strip)
 INPUT_COLUMNS = %w[group kind record_id label field old new].freeze
-KIND_FIELDS = { 'name_gender' => %w[gender], 'taxon_name' => %w[name] }.freeze
+KIND_FIELDS = { 'name_gender' => %w[gender], 'taxon_name' => %w[name], 'taxon_delete' => %w[status] }.freeze
 PROTONYM_FIELDS = %w[gender_agreement_type part_of_speech_basis interpretation_status masculine_epithet
                      feminine_epithet neuter_epithet spelling_basis etymology_taxt etymology_source
                      etymology_pages etymology_translation etymology_derivation].freeze
 SUMMARY = { 'name_gender' => ENV['NAME_GENDER_SUMMARY'], 'taxon_name' => ENV['TAXON_NAME_SUMMARY'],
-            'protonym' => ENV['PROTONYM_SUMMARY'] }.freeze
+            'protonym' => ENV['PROTONYM_SUMMARY'], 'taxon_delete' => ENV['TAXON_DELETE_SUMMARY'] }.freeze
 SPECIES_GROUP_TYPES = %w[Species Subspecies Infrasubspecies].freeze
+HISTORICAL_STATUSES = [Status::OBSOLETE_COMBINATION, Status::UNAVAILABLE, Status::UNAVAILABLE_MISSPELLING].freeze
 
 abort "No input file #{INPUT}" unless File.exist?(INPUT)
 
@@ -64,6 +73,8 @@ rows.each do |r|
   abort "Field #{r['field']} not allowed for #{r['kind']}" unless allowed.include?(r['field'])
   abort "No edit summary for #{r['kind']} (set #{r['kind'].upcase}_SUMMARY)" if SUMMARY[r['kind']].to_s.strip.empty?
   abort "Unknown gender #{r['new']}" if r['kind'] == 'name_gender' && !Name::GENDERS.include?(r['new'])
+  abort "A delete row must have old 'unavailable misspelling' and an empty new" if r['kind'] == 'taxon_delete' &&
+    (r['old'] != Status::UNAVAILABLE_MISSPELLING || !r['new'].empty?)
   abort "Derivation with markup other than <i>: #{r['record_id']}" if r['field'] == 'etymology_derivation' &&
                                                                       r['new'].gsub(%r{</?i>}, '').match?(/[<>]/)
 end
@@ -155,6 +166,22 @@ groups.each do |group, grows|
         name.create_activity(Activity::UPDATE, bot, edit_summary: SUMMARY['taxon_name']).update_columns(automated_edit: true)
       end
 
+      grows.select { |r| r['kind'] == 'taxon_delete' }.each do |r|
+        taxon = Taxon.find_by(id: r['record_id'].to_i) or raise Reject, "taxon #{r['record_id']} not found"
+        raise Reject, "#{taxon.id}: status is #{taxon.status}, not #{r['old']}" unless taxon.status == r['old']
+        raise Reject, "#{taxon.id}: name differs (#{taxon.name.name} vs #{r['label']})" unless taxon.name.name == r['label']
+        links = taxon.what_links_here.all
+        raise Reject, "#{taxon.id}: other records refer to it (#{links.size})" if taxon.what_links_here.any?
+        record = { taxon: taxon.attributes, name: taxon.name.attributes, protonym_id: taxon.protonym_id,
+                   what_links_here: links.map(&:to_s), versions: PaperTrail::Version.where(item_type: 'Taxon', item_id: taxon.id).count }
+        File.write(Rails.root.join('tmp', "deleted_taxon_#{taxon.id}_#{uuid}.json").to_s, JSON.pretty_generate(record))
+        name_id = taxon.name_id
+        raise Reject, "#{taxon.id}: destroy failed: #{taxon.errors.full_messages.join('; ')}" unless taxon.destroy
+        raise Reject, "#{taxon.id}: still present after destroy" if Taxon.exists?(taxon.id)
+        details[taxon.id] = "deleted; name record #{name_id} #{Name.exists?(name_id) ? 'kept (shared)' : 'deleted with it'}"
+        taxon.create_activity(Activity::DESTROY, bot, edit_summary: SUMMARY['taxon_delete']).update_columns(automated_edit: true)
+      end
+
       grows.select { |r| r['kind'] == 'protonym' }.group_by { |r| r['record_id'].to_i }.each do |pid, prows|
         p = Protonym.find_by(id: pid) or raise Reject, "protonym #{pid} not found"
         prows.each do |r|
@@ -178,7 +205,7 @@ groups.each do |group, grows|
         taxa = species_group_taxa_in(g)
         changed = taxa.select { |t| before[g.id][t.id] != t.name.name }.map(&:id) - group_taxon_ids
         raise Reject, "#{g.id}: names changed outside the group: #{changed.first(5).join(', ')}" if changed.any?
-        unagreeing = taxa.reject { |t| t.status == Status::UNAVAILABLE_MISSPELLING }.select do |t|
+        unagreeing = taxa.reject { |t| HISTORICAL_STATUSES.include?(t.status) }.select do |t|
           p = t.protonym
           spelling = p.epithet_for_gender(gender)
           spelling.present? && !p.spelling_kept_against_agreement? && t.name.epithet != spelling
