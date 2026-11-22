@@ -47,9 +47,11 @@ INPUT = ENV.fetch('INPUT', Rails.root.join('tmp', 'grouped_changes.tsv').to_s)
 ONLY = ENV['ONLY']&.split(',')&.map(&:strip)
 INPUT_COLUMNS = %w[group kind record_id label field old new].freeze
 KIND_FIELDS = { 'name_gender' => %w[gender], 'taxon_name' => %w[name], 'taxon_delete' => %w[status] }.freeze
+# notes_taxt: the public protonym note, added 22 Nov 2026 (Brian) to replace the four "Not resolved" gender notes;
+# like the other fields, written only from an exact old value.
 PROTONYM_FIELDS = %w[gender_agreement_type part_of_speech_basis interpretation_status masculine_epithet
                      feminine_epithet neuter_epithet spelling_basis etymology_taxt etymology_source
-                     etymology_pages etymology_translation etymology_derivation].freeze
+                     etymology_pages etymology_translation etymology_derivation notes_taxt].freeze
 SUMMARY = { 'name_gender' => ENV['NAME_GENDER_SUMMARY'], 'taxon_name' => ENV['TAXON_NAME_SUMMARY'],
             'protonym' => ENV['PROTONYM_SUMMARY'], 'taxon_delete' => ENV['TAXON_DELETE_SUMMARY'] }.freeze
 SPECIES_GROUP_TYPES = %w[Species Subspecies Infrasubspecies].freeze
