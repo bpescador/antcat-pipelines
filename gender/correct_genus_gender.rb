@@ -16,7 +16,7 @@
 # are unchanged after the save.
 #
 # Env:    MODE=check (default; always rolls back) | MODE=write; INPUT=/app/tmp/genus_gender_corrections.tsv;
-#         ONLY=record ids
+#         ONLY=record ids; GENDER_SUMMARY, DERIVATION_SUMMARY (optional edit summaries)
 # Output: /app/tmp/correct_genus_gender_<MODE>_<uuid>.tsv: result, kind, record_id, name, old, new, detail
 # Edits:  AntCatBot, automated_edit: true, one request_uuid, one `update` activity per record.
 # Rollback: the dump taken before the run, or PaperTrail versions by request_uuid (old values in the input).
@@ -36,7 +36,9 @@ SUMMARY = {
   'gender' => '[automated] Gender of the genus-group name corrected under ICZN Art. 30; the grammatical basis and ' \
               'the article are in the AntCat derivation. No species-group name or spelling changed',
   'derivation' => '[automated] AntCat derivation: gender sentence added, giving the basis of the gender (ICZN Art. 30)'
-}.freeze
+}.merge({ 'gender' => ENV['GENDER_SUMMARY'], 'derivation' => ENV['DERIVATION_SUMMARY'] }.compact).freeze
+# GENDER_SUMMARY / DERIVATION_SUMMARY (optional) replace the summaries for a run that is not a correction of the
+# usual kind, e.g. the 21 Nov reversion of Mycetosoritis.
 
 abort "No input file #{INPUT}" unless File.exist?(INPUT)
 
