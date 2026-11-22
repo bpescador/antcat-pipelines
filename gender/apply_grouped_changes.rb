@@ -106,6 +106,12 @@ def species_group_taxa_in(genus)
   scope.where(type: SPECIES_GROUP_TYPES).includes(:name, :protonym).order(:id).to_a
 end
 
+# An ending that cannot belong to an adjective of this gender (first/second declension only).
+def ending_disagrees?(epithet, gender)
+  wrong = { 'masculine' => %w[a um], 'feminine' => %w[us um], 'neuter' => %w[us a] }[gender] || []
+  wrong.any? { |ending| epithet.to_s.end_with?(ending) }
+end
+
 def tidied_notes(record)
   return [] unless record.is_a?(Protonym) && record.notes_taxt_changed?
   record.notes_taxt.to_s.gsub(/\s+/, '') == record.notes_taxt_was.to_s.gsub(/\s+/, '') ? %w[notes_taxt] : []
@@ -216,7 +222,22 @@ groups.each do |group, grows|
           raise Reject, "#{g.id}: not spelled for #{gender}: " +
                         unagreeing.first(5).map { |t| "#{t.id} #{t.name.name}" }.join(', ')
         end
-        details[:genus] = "#{g.name.name}: #{taxa.size} species-group taxa, all spelled for #{gender}"
+        # Safeguard (Brian, 22 Nov 2026, after Calyptites antediluvianus): a name whose protonym records no three
+        # forms is not skipped. An adjective or participle whose ending cannot be of this gender holds the group;
+        # a name with no part of speech recorded and such an ending is reported for checking.
+        unrecorded = taxa.reject { |t| HISTORICAL_STATUSES.include?(t.status) }.select do |t|
+          p = t.protonym
+          p.epithet_for_gender(gender).blank? && !p.spelling_kept_against_agreement? &&
+            ending_disagrees?(t.name.epithet, gender)
+        end
+        adjectival = unrecorded.select { |t| %w[adjective participle].include?(t.protonym.gender_agreement_type) }
+        if adjectival.any?
+          raise Reject, "#{g.id}: no recorded forms, ending not #{gender}: " +
+                        adjectival.first(5).map { |t| "#{t.id} #{t.name.name}" }.join(', ')
+        end
+        unknown = unrecorded.select { |t| t.protonym.gender_agreement_type.blank? }
+        details[:genus] = "#{g.name.name}: #{taxa.size} species-group taxa, all spelled for #{gender}" +
+                          (unknown.any? ? "; check (no part of speech): #{unknown.map { |t| "#{t.id} #{t.name.name}" }.join(', ')}" : '')
       end
 
       result = MODE == 'check' ? 'would_write' : 'written'
