@@ -6,7 +6,9 @@
 # Used before a revision of those texts, so that the revision's `old` values are the stored bytes, not a copy
 # from an earlier draft (the input of apply_grouped_changes.rb asserts them exactly).
 #
-# Env:    PROTONYMS=protonym ids, comma-separated (required)
+# Env:    PROTONYMS=protonym ids, comma-separated; or ALL=1: every notes page, every protonym whose notes_taxt
+#         mentions gender ("Gender"), and every genus-group protonym whose derivation mentions a 2026 date
+#         (derivation.txt). For a review of what is published (22 Nov 2026).
 # Output: /app/tmp/notes_export_<timestamp>/ with, per protonym, <id>_notes_taxt.txt and <id>_notes_page.md
 #         (absent when empty), and MANIFEST.tsv (protonym, name, notes_page id, file, bytes, md5); also printed.
 require 'digest'
@@ -15,7 +17,12 @@ require 'fileutils'
 ActiveRecord::Base.logger = nil
 Rails.logger.level = :info
 
-PROTONYMS = ENV.fetch('PROTONYMS').split(',').map { |s| Integer(s) }
+ALL = ENV['ALL'] == '1'
+PROTONYMS = if ALL
+              (NotesPage.pluck(:protonym_id) + Protonym.where('notes_taxt LIKE ?', '%Gender%').pluck(:id)).uniq.sort
+            else
+              ENV.fetch('PROTONYMS').split(',').map { |s| Integer(s) }
+            end
 abort 'No PROTONYMS' if PROTONYMS.empty?
 
 DIR = Rails.root.join('tmp', "notes_export_#{Time.current.strftime('%Y%m%d%H%M%S')}").to_s
@@ -30,6 +37,13 @@ PROTONYMS.each do |pid|
     File.binwrite(File.join(DIR, file), text)
     manifest << [pid, p.name.name, page&.id, file, text.bytesize, Digest::MD5.hexdigest(text)].join("\t")
   end
+end
+
+if ALL
+  dated = Protonym.where('etymology_derivation LIKE ?', '%2026%').order(:id)
+  File.write(File.join(DIR, 'derivations_2026.tsv'),
+             dated.map { |p| [p.id, p.name.name, p.etymology_derivation.to_s.gsub(/[\t\r\n]+/, ' ')].join("\t") }.join("\n") + "\n")
+  manifest << "derivations mentioning 2026: #{dated.count} (derivations_2026.tsv)"
 end
 
 File.write(File.join(DIR, 'MANIFEST.tsv'), manifest.join("\n") + "\n")
