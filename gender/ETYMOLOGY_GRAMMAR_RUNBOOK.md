@@ -413,3 +413,11 @@ published etymology replacing an AntCat derivation, a corrected citation): `gend
   sends an unchanged file (22 Nov: a `git rev-parse` check failed silently after a new commit).
 - First use, 22 Nov 2026: Ishakidris, Baracidris, Kartidris, Quadrulicapito masculine with *hastifer*, *pilosus*,
   *sparsipilus*, *longus*; Hong 2002 etymologies for three -capito genera; 18 Art. 30 citations corrected.
+- **Revising explanatory text** (protonym `notes_taxt`, a notes page) after a decision: first run
+  `gender/notes_export.rb` (read-only, PROTONYMS=ids) and build the input's `old` from the exported bytes, never
+  from a draft; run it again after the write and compare md5s with the approved files. `notes_taxt` is a
+  `protonym` field of `apply_grouped_changes.rb` from 9fa7f41. Notes pages are revised through the site's edit
+  form (the page history keeps every version); the browser stored LF, so the export md5 equals the file's.
+  Staging may lack text that was posted on the production site: there the check holds ("not the expected old
+  value"); test the path with a staging input whose `old` is staging's own value.
+  Used 22 Nov 2026: the four "Not resolved" gender notes and pages (Axinidris, Cyphoidris, Myopias, Harpegnathos).
