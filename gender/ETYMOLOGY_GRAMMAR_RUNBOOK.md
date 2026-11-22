@@ -99,6 +99,7 @@ whatever its size, and every question costs him a context switch. So:
 | The write runner | `gender/write_protonym_fields.rb` (rules table; selftest `gender/selftest_write_protonym_fields.rb` in smoke) |
 | Older runners | `write_etymology_sources.rb` (provenance), `write_etymology_derivations.rb` (toponym pilot) |
 | Notes on a name | `gender/write_notes_page.rb` (one reviewed document, one protonym; sect. 11) |
+| Reviewed exact changes in groups | `gender/apply_grouped_changes.rb` (sect. 13; read-only export first: `gender/agreement_export.rb`) |
 
 **The runner** writes `etymology_derivation`, `gender_agreement_type`, `part_of_speech_basis` and
 `interpretation_status`, one input row per protonym and field (`protonym_id, protonym_name, rule, field, value,
@@ -386,3 +387,29 @@ subgenera, the rest synonyms, obsolete combinations, homonyms and misspellings; 
   Myrmegis and Savignyi masculine by default, Art. 30.2.4), with derivations from Wheeler 1956 (in Brian's
   background reading) and Smith 1954a read; and 7 subgenus records corrected from the genus's gender to the
   subgenus name's own, on Brian's go (a recorded value is never changed by the runner).
+
+## 13. Reviewed decisions applied as groups (22 Nov 2026)
+
+For decisions Brian approves name by name (a genus-group gender with the species spellings that must agree, a
+published etymology replacing an AntCat derivation, a corrected citation): `gender/apply_grouped_changes.rb`.
+
+- **Export first** with `gender/agreement_export.rb` (read-only): the genus, every species-group taxon in it,
+  whether each name record is shared, the protonym grammar fields and the three spellings. Build the input from
+  what production holds, never from memory.
+- **One group per genus.** The genus's name record gender, the taxon's own name record (never the protonym's,
+  which keeps the original spelling), and on the protonym the three gender spellings and `spelling_basis =
+  gender_agreement` (Arts. 31.2, 34.2; no history item, per the 14 Nov emendation rule). The group is written in
+  one transaction or not at all; it is held if any species-group taxon in the genus would then not be spelled for
+  the genus's gender.
+- **Separate runs for separate kinds of change** (agreement, sourced etymologies, citation corrections), each with
+  its own edit summary, so the audit keeps them apart.
+- **Sourced etymology on a genus-group name:** the author's words as printed (non-English kept as printed),
+  `etymology_translation` beginning "From the <language>:", and the derivation reduced to the gender sentence
+  (the genus-group exception to "no derivation next to a sourced etymology": the gender basis has nowhere else to
+  live). The catalog line shows only the quotation; the protonym and notes pages show the translation.
+- **Notes pages** go up with `write_notes_page.rb`, not through the browser. Status lines that say "not yet
+  applied" are updated to "applied" before posting when the writes are already done.
+- **Mac blocks check files by md5 only**, not by commit: a later commit to the repo must not stop a block that
+  sends an unchanged file (22 Nov: a `git rev-parse` check failed silently after a new commit).
+- First use, 22 Nov 2026: Ishakidris, Baracidris, Kartidris, Quadrulicapito masculine with *hastifer*, *pilosus*,
+  *sparsipilus*, *longus*; Hong 2002 etymologies for three -capito genera; 18 Art. 30 citations corrected.
