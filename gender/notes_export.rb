@@ -7,8 +7,7 @@
 # from an earlier draft (the input of apply_grouped_changes.rb asserts them exactly).
 #
 # Env:    PROTONYMS=protonym ids, comma-separated; or ALL=1: every notes page, every protonym whose notes_taxt
-#         mentions gender ("Gender"), and every genus-group protonym whose derivation mentions a 2026 date
-#         (derivation.txt). For a review of what is published (22 Nov 2026).
+#         mentions gender ("Gender"), and every protonym whose derivation mentions 2026 (derivations_2026.tsv). For a review of what is published (22 Nov 2026).
 # Output: /app/tmp/notes_export_<timestamp>/ with, per protonym, <id>_notes_taxt.txt and <id>_notes_page.md
 #         (absent when empty), and MANIFEST.tsv (protonym, name, notes_page id, file, bytes, md5); also printed.
 require 'digest'
