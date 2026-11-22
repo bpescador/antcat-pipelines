@@ -45,6 +45,20 @@ if ALL
   manifest << "derivations mentioning 2026: #{dated.count} (derivations_2026.tsv)"
 end
 
+# DERIVATIONS=1 (with ALL=1): every derivation with a gender sentence, and every protonym note that mentions
+# AntCat or 2026, for a check of public wording (22 Nov 2026).
+if ALL && ENV['DERIVATIONS'] == '1'
+  rows = Protonym.where('etymology_derivation LIKE ?', '%Gender%').order(:id).map do |p|
+    [p.id, p.name.name, p.etymology_derivation.to_s.gsub(/[\t\r\n]+/, ' ')].join("\t")
+  end
+  File.write(File.join(DIR, 'derivations_gender.tsv'), rows.join("\n") + "\n")
+  notes = Protonym.where('notes_taxt LIKE ? OR notes_taxt LIKE ?', '%AntCat%', '%2026%').order(:id).map do |p|
+    [p.id, p.name.name, p.notes_taxt.to_s.gsub(/[\t\r\n]+/, ' ')].join("\t")
+  end
+  File.write(File.join(DIR, 'notes_antcat_2026.tsv'), notes.join("\n") + "\n")
+  manifest << "derivations with a gender sentence: #{rows.size}; notes mentioning AntCat or 2026: #{notes.size}"
+end
+
 File.write(File.join(DIR, 'MANIFEST.tsv'), manifest.join("\n") + "\n")
 puts manifest
 puts "Wrote #{DIR}"
