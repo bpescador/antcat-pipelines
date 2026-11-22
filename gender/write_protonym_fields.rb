@@ -213,6 +213,22 @@ RULES = {
              'on derived etymologies. Gender and spelling unchanged (a leading space in the protonym notes, where ' \
              'present, removed by the save)'
   },
+  # 21 Nov 2026: the genus-group names in neither Wheeler edition (411). An AntCat derivation in AntCat's words;
+  # where the original description states the etymology, it ends with the author's citation "(Author, year: page)".
+  # Gender sentence as in the Wheeler rule (it must equal the gender the taxa carry); names whose gender is open
+  # carry the derivation only.
+  'genus_derivation_original' => {
+    fields: {
+      'etymology_derivation' => %r{\A(?:[^<>\t]|<i>|</i>){8,900}(?: \([^()<>\t]{3,80}, \d{4}[a-z]?: \d{1,5}\))?\.(?: Gender (?:masculine|feminine|neuter): (?:[^<>\t]|<i>|</i>){10,600} \(ICZN Art\. 30\.[12](?:\.\d){1,2}\)\.)?\z}
+    },
+    hold_sourced_etymology: true,
+    check_genus_gender: true,
+    whitespace_tidy_ok: %w[notes_taxt],
+    summary: '[automated] AntCat derivation recorded for the genus-group name (not in Wheeler 1956 or Wheeler & ' \
+             'Wheeler 1984b), from its parts and, where it states one, the original description, with the gender ' \
+             'and its basis under ICZN Art. 30; under the AntCat policy on derived etymologies. Gender and ' \
+             'spelling unchanged'
+  },
   'judged_adjective_pos' => {
     fields: { 'gender_agreement_type' => %w[adjective participle], 'part_of_speech_basis' => %w[grammatical_form],
               'interpretation_status' => %w[reasonably_inferred] },
