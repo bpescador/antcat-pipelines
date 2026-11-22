@@ -30,11 +30,12 @@ raise 'MODE must be check or write' unless %w[check write].include?(MODE)
 INPUT = ENV.fetch('INPUT', Rails.root.join('tmp', 'genus_gender_corrections.tsv').to_s)
 ONLY = ENV['ONLY']&.split(',')&.map(&:to_i)
 INPUT_COLUMNS = %w[kind record_id name old new].freeze
+# The summaries of the first run (21 Nov 14:53, the -idris names and Promyopias) named those cases; from the second
+# run (21 Nov, group 1 of the 54 open genders) they are general, and the basis of each name is in its derivation.
 SUMMARY = {
-  'gender' => '[automated] Gender of the genus-group name corrected under ICZN Art. 30 (Art. 30.1.4.2 for -idris, ' \
-              'whose original author did not treat it as feminine; Art. 30.1.2 for Promyopias). No species-group ' \
-              'name or spelling changed',
-  'derivation' => '[automated] AntCat derivation: gender sentence added after the gender correction (ICZN Art. 30)'
+  'gender' => '[automated] Gender of the genus-group name corrected under ICZN Art. 30; the grammatical basis and ' \
+              'the article are in the AntCat derivation. No species-group name or spelling changed',
+  'derivation' => '[automated] AntCat derivation: gender sentence added, giving the basis of the gender (ICZN Art. 30)'
 }.freeze
 
 abort "No input file #{INPUT}" unless File.exist?(INPUT)
