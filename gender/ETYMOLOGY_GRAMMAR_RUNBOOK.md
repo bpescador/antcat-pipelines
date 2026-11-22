@@ -421,3 +421,8 @@ published etymology replacing an AntCat derivation, a corrected citation): `gend
   Staging may lack text that was posted on the production site: there the check holds ("not the expected old
   value"); test the path with a staging input whose `old` is staging's own value.
   Used 22 Nov 2026: the four "Not resolved" gender notes and pages (Axinidris, Cyphoidris, Myopias, Harpegnathos).
+- **Quoted etymologies are complete** (Brian, 22 Nov 2026): the catalog shows a sourced etymology in quotation
+  marks as the author's words, so `etymology_taxt` reproduces the original wording in full, or marks any
+  omission ("[…]"). An editor's comment found in that field is not the author's etymology: replace it only with
+  Brian's go, from an exact old value; its history keeps it. First case: *Asphinctanilloides amazona*
+  (Brandão et al., 1999: 31).
