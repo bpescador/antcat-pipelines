@@ -17,6 +17,14 @@
 #                     (Taxon#what_links_here, as the taxon form's Delete). Before the delete the whole record (taxon,
 #                     name, protonym id, what-links-here) is written to /app/tmp/deleted_taxon_<id>_<uuid>.json.
 #                     Approved 22 Nov 2026 (Brian) for misspelling records that hold a correct original spelling.
+#   kind type_name_taxon record_id = type_names id; field taxon_id; old = the linked taxon now, new = the taxon to
+#                     link. Only for an approved correction of a type link to the wrong record of the same name: held
+#                     unless the link is exactly `old`, both taxa have the same protonym, the new taxon is a valid
+#                     species-group taxon and `label` is the name of the genus-group protonym that owns the type name.
+#                     The record is written to /app/tmp/type_name_<id>_<uuid>.json first. Approved 22 Nov 2026 (Brian)
+#                     for Calyptites; not for automatic use.
+#   kind history_item_taxt record_id = history_items id; field taxt; old = the exact stored text; label = the name of
+#                     the item's protonym. Approved 22 Nov 2026 (Brian) for the Calyptites history item.
 # `label` is the record's name as AntCat has it (the taxon's or protonym's name before the run).
 #
 # A group is held (nothing in it written) when any of its rows fails: record or label differs, the stored value is
@@ -46,14 +54,16 @@ raise 'MODE must be check or write' unless %w[check write].include?(MODE)
 INPUT = ENV.fetch('INPUT', Rails.root.join('tmp', 'grouped_changes.tsv').to_s)
 ONLY = ENV['ONLY']&.split(',')&.map(&:strip)
 INPUT_COLUMNS = %w[group kind record_id label field old new].freeze
-KIND_FIELDS = { 'name_gender' => %w[gender], 'taxon_name' => %w[name], 'taxon_delete' => %w[status] }.freeze
+KIND_FIELDS = { 'name_gender' => %w[gender], 'taxon_name' => %w[name], 'taxon_delete' => %w[status],
+                'type_name_taxon' => %w[taxon_id], 'history_item_taxt' => %w[taxt] }.freeze
 # notes_taxt: the public protonym note, added 22 Nov 2026 (Brian) to replace the four "Not resolved" gender notes;
 # like the other fields, written only from an exact old value.
 PROTONYM_FIELDS = %w[gender_agreement_type part_of_speech_basis interpretation_status masculine_epithet
                      feminine_epithet neuter_epithet spelling_basis etymology_taxt etymology_source
                      etymology_pages etymology_translation etymology_derivation notes_taxt].freeze
 SUMMARY = { 'name_gender' => ENV['NAME_GENDER_SUMMARY'], 'taxon_name' => ENV['TAXON_NAME_SUMMARY'],
-            'protonym' => ENV['PROTONYM_SUMMARY'], 'taxon_delete' => ENV['TAXON_DELETE_SUMMARY'] }.freeze
+            'protonym' => ENV['PROTONYM_SUMMARY'], 'taxon_delete' => ENV['TAXON_DELETE_SUMMARY'],
+            'type_name_taxon' => ENV['TYPE_NAME_TAXON_SUMMARY'], 'history_item_taxt' => ENV['HISTORY_ITEM_TAXT_SUMMARY'] }.freeze
 SPECIES_GROUP_TYPES = %w[Species Subspecies Infrasubspecies].freeze
 HISTORICAL_STATUSES = [Status::OBSOLETE_COMBINATION, Status::UNAVAILABLE, Status::UNAVAILABLE_MISSPELLING].freeze
 
@@ -172,6 +182,33 @@ groups.each do |group, grows|
         raise Reject, "#{taxon.id}: stored name differs" unless name.reload.name == r['new']
         raise Reject, "#{taxon.id}: name cache not updated" unless taxon.reload.name_cache == r['new']
         name.create_activity(Activity::UPDATE, bot, edit_summary: SUMMARY['taxon_name']).update_columns(automated_edit: true)
+      end
+
+      grows.select { |r| r['kind'] == 'type_name_taxon' }.each do |r|
+        tn = TypeName.find_by(id: r['record_id'].to_i) or raise Reject, "type name #{r['record_id']} not found"
+        raise Reject, "type name #{tn.id}: links taxon #{tn.taxon_id}, not #{r['old']}" unless tn.taxon_id.to_s == r['old']
+        owner = tn.protonym or raise Reject, "type name #{tn.id}: no protonym owns it"
+        raise Reject, "type name #{tn.id}: owner is #{owner.name.name}, not #{r['label']}" unless owner.name.name == r['label']
+        from = Taxon.find_by(id: r['old'].to_i) or raise Reject, "taxon #{r['old']} not found"
+        to = Taxon.find_by(id: r['new'].to_i) or raise Reject, "taxon #{r['new']} not found"
+        raise Reject, "type name #{tn.id}: taxa #{from.id} and #{to.id} have different protonyms" unless from.protonym_id == to.protonym_id
+        raise Reject, "type name #{tn.id}: taxon #{to.id} is #{to.status} #{to.type}, not a valid species-group taxon" unless
+          to.status == Status::VALID && SPECIES_GROUP_TYPES.include?(to.type)
+        File.write(Rails.root.join('tmp', "type_name_#{tn.id}_#{uuid}.json").to_s, JSON.pretty_generate(tn.attributes))
+        tn.taxon_id = to.id
+        check_save!(tn, %w[taxon_id])
+        raise Reject, "type name #{tn.id}: stored taxon differs" unless tn.reload.taxon_id == to.id
+        details[tn.id] = "type link #{from.id} -> #{to.id} (#{to.name.name})"
+      end
+
+      grows.select { |r| r['kind'] == 'history_item_taxt' }.each do |r|
+        hi = HistoryItem.find_by(id: r['record_id'].to_i) or raise Reject, "history item #{r['record_id']} not found"
+        raise Reject, "history item #{hi.id}: protonym is #{hi.protonym.name.name}, not #{r['label']}" unless hi.protonym.name.name == r['label']
+        raise Reject, "history item #{hi.id}: taxt is not the expected old value" unless same?(hi.taxt, r['old'])
+        hi.taxt = r['new']
+        check_save!(hi, %w[taxt])
+        raise Reject, "history item #{hi.id}: stored taxt differs" unless same?(hi.reload.taxt, r['new'])
+        hi.create_activity(Activity::UPDATE, bot, edit_summary: SUMMARY['history_item_taxt']).update_columns(automated_edit: true)
       end
 
       grows.select { |r| r['kind'] == 'taxon_delete' }.each do |r|

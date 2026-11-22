@@ -54,6 +54,11 @@ rows = [
 r, _ = B(rows, ix, 6)
 assert r == {'1': '3', '2': '4'}, r
 PY
+# grouped runner safeguards (2026-11-22): type links only within one protonym and to a valid taxon; names without
+# recorded forms still checked after a genus gender change
+grep -q 'have different protonyms' gender/apply_grouped_changes.rb && grep -q 'not a valid species-group taxon' gender/apply_grouped_changes.rb \
+  && grep -q 'no recorded forms, ending not' gender/apply_grouped_changes.rb \
+  || { echo "TRIPWIRE: apply_grouped_changes.rb safeguards missing"; fail=1; }
 # part of speech (2026-11-12): TW's three-form rule ported; the genus-gender check catches calvus
 PYTHONPATH=gender python3 - <<'PY' 2>/dev/null || { echo "TRIPWIRE: gender/propose_part_of_speech.py rules regressed"; fail=1; }
 from propose_part_of_speech import predict_three_forms as F, classify as C
