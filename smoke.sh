@@ -187,4 +187,6 @@ PYTHONPATH=.:bolton python3 -c "from diff_depositories import literal_codes as L
 grep -q 'def use_codes' bolton/split_depository_specimens.py || { echo "TRIPWIRE: mixed-case codes missing from bolton/split_depository_specimens.py"; fail=1; }
 # behaviour check on a made-up fixture (stdlib only, temp folder): the June 2026 decisions
 python3 antweb_types/selftest.py | grep -q 'SELFTEST PASS' || { echo "SELFTEST FAIL: run python3 antweb_types/selftest.py"; fail=1; }
+# one-command write (24 Nov 2026): the gates must stay in the script
+bash -n gender/run_grouped_write.sh && [ "$(grep -c 'read -r -p' gender/run_grouped_write.sh)" -ge 2 ] && grep -q 'mysqldump' gender/run_grouped_write.sh && grep -q 'antcat-staging-hold' gender/run_grouped_write.sh && grep -q 'MODE=check' gender/run_grouped_write.sh || { echo "TRIPWIRE: gender/run_grouped_write.sh lost a gate (dump, dry run, two confirmations, staging hold)"; fail=1; }
 [ $fail -eq 0 ] && echo "SMOKE PASS" || { echo "SMOKE FAIL -- do not commit"; exit 1; }

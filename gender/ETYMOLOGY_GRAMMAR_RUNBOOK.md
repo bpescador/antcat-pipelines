@@ -426,3 +426,23 @@ published etymology replacing an AntCat derivation, a corrected citation): `gend
   omission ("[…]"). An editor's comment found in that field is not the author's etymology: replace it only with
   Brian's go, from an exact old value; its history keeps it. First case: *Asphinctanilloides amazona*
   (Brandão et al., 1999: 31).
+
+## 14. One command per write (24 Nov 2026)
+
+Brian, 24 Nov 2026: a paste per step and per machine is not sustainable ("if this is what it takes then this becomes
+a multi year project"). The gates stay; the pasting goes.
+
+- **Writes:** `gender/run_grouped_write.sh INPUT.tsv TAG CANARY_GROUP SUMMARIES.env CANARY_URL [RUNNER.rb]`, run once
+  on Brian's Mac. It sends the files, runs staging (hold file, check, write), takes the production dump, shows the
+  production dry run with every row, asks "yes" before the canary and "yes" again after Brian has looked at the page,
+  writes the rest, copies the logs to the Mac with md5 compared, and cleans both servers by name. Anything but "yes"
+  stops it. `SUMMARIES.env` is docker's env-file format (KEY=value, no quotes), so parentheses need no quoting.
+- **Before the run:** Brian has approved the input; the board note is posted. **After:** server log entry, board
+  release, project documents. Record the runner's commit and md5 in the server log (the script prints the md5).
+- **Batches:** about a thousand names, not dozens. All reading is done first: AntCat's own PDF (for a nested
+  reference, the parent's), then the library on the Mac, then the AntWiki collection
+  (`~/Google Drive/Ant Lab/AntWiki PDF Collection`), and only then ask Brian. He gets one table and one decision list.
+- **Questions to Brian** only where he is the evidence (a name he described, a decision that is his).
+- First used 24 Nov 2026 15:25 for a 9-row set (a hand-written version, `run_set2.sh`): 1 min 26 s.
+- Still by block: read-only exports (one Mac command that sends, runs and fetches is the next thing to write).
+
