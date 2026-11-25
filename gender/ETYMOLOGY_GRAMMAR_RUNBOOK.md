@@ -437,6 +437,12 @@ a multi year project"). The gates stay; the pasting goes.
   production dry run with every row, asks "yes" before the canary and "yes" again after Brian has looked at the page,
   writes the rest, copies the logs to the Mac with md5 compared, and cleans both servers by name. Anything but "yes"
   stops it. `SUMMARIES.env` is docker's env-file format (KEY=value, no quotes), so parentheses need no quoting.
+- **Read-only exports (25 Nov 2026):** `gender/run_readonly_export.sh RUNNER.rb TAG OUTDIR`, run once on Brian's Mac:
+  sends the runner to antcat-prod, runs it in the app container as `antcat` with `OUT_PREFIX=/app/tmp/TAG`, brings the
+  files it wrote to the Mac with md5 compared, removes them and the runner from the server. It refuses a runner that
+  calls save, update, destroy, delete or create. First runner: `gender/wording_export.rb` (derivations that say
+  "not identified" and near wordings; protonym notes that mention "Spelling"). In a grouped write input, the label
+  of a protonym row is the protonym's own name (for a subgenus the bare name, e.g. Morleyidris), not the taxon's.
 - **Before the run:** Brian has approved the input; the board note is posted. **After:** server log entry, board
   release, project documents. Record the runner's commit and md5 in the server log (the script prints the md5).
 - **Batches:** about a thousand names, not dozens. All reading is done first: AntCat's own PDF (for a nested

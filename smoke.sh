@@ -189,4 +189,5 @@ grep -q 'def use_codes' bolton/split_depository_specimens.py || { echo "TRIPWIRE
 python3 antweb_types/selftest.py | grep -q 'SELFTEST PASS' || { echo "SELFTEST FAIL: run python3 antweb_types/selftest.py"; fail=1; }
 # one-command write (24 Nov 2026): the gates must stay in the script
 bash -n gender/run_grouped_write.sh && [ "$(grep -c 'read -r -p' gender/run_grouped_write.sh)" -ge 2 ] && grep -q 'mysqldump' gender/run_grouped_write.sh && grep -q 'antcat-staging-hold' gender/run_grouped_write.sh && grep -q 'MODE=check' gender/run_grouped_write.sh || { echo "TRIPWIRE: gender/run_grouped_write.sh lost a gate (dump, dry run, two confirmations, staging hold)"; fail=1; }
+bash -n gender/run_readonly_export.sh && grep -q 'changes records' gender/run_readonly_export.sh && grep -q 'md5sum -c' gender/run_readonly_export.sh && ! grep -qE '\.(save|update|destroy|delete|create)[!(_ ]' gender/wording_export.rb || { echo "TRIPWIRE: gender/run_readonly_export.sh lost its read-only guard or md5 check, or wording_export.rb writes records"; fail=1; }
 [ $fail -eq 0 ] && echo "SMOKE PASS" || { echo "SMOKE FAIL -- do not commit"; exit 1; }
