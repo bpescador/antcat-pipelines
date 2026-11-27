@@ -45,7 +45,9 @@ remote() { # host step
   ssh "$1" "bash -s -- $2 $TAG $IMD5 $RMD5 $SMD5" <<'REMOTE'
 set -eo pipefail
 STEP=$1; TAG=$2; IMD5=$3; RMD5=$4; SMD5=$5; T=/var/www/antcat-2/tmp; cd $T
-run() { docker exec -u antcat -w /app -e RAILS_ENV=production -e INPUT=/app/tmp/$TAG.tsv --env-file $T/$TAG.env "$@" antcat-app bundle exec rails runner tmp/apply_grouped_changes.rb 2>&1 | grep -v DEBUG | grep -E "held|error|groups|written|would_write|Wrote"; }
+run() { docker exec -u antcat -w /app -e RAILS_ENV=production -e INPUT=/app/tmp/$TAG.tsv --env-file $T/$TAG.env "$@" antcat-app bundle exec rails runner tmp/apply_grouped_changes.rb 2>&1 | grep -v DEBUG | grep -E "held|error|groups|written|would_write|Wrote" | short; }
+# a large set prints its first 30 written groups, then every held or error line and the totals (27 Nov 2026: 10,759 groups)
+short() { awk '/^  (written|would_write) /{n++; if (n<=30) print; else if (n==31) print "  ... (written groups after the first 30 not shown; totals below)"; next} {print}'; }
 verify() { printf '%s  %s\n' $RMD5 apply_grouped_changes.rb $IMD5 $TAG.tsv $SMD5 $TAG.env | md5sum -c; chmod 644 apply_grouped_changes.rb $TAG.tsv $TAG.env $TAG.canary.env; }
 case $STEP in
   staging)
@@ -58,7 +60,9 @@ case $STEP in
     (umask 077 && docker exec antcat-db sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction antcat' 2>/dev/null | gzip > $D)
     gzip -t $D; ls -l $D
     verify; run -e MODE=check
-    cut -f1,2,3,6,7,8 "$(ls -t apply_grouped_changes_check_*.tsv | head -1)" | cut -c1-170 ;;
+    F="$(ls -t apply_grouped_changes_check_*.tsv | head -1)"
+    cut -f1,2,3,6,7,8 "$F" | head -41 | cut -c1-170
+    [ "$(wc -l < "$F")" -gt 41 ] && { echo "  ... $(($(wc -l < "$F") - 41)) more rows in $F; held rows:"; cut -f1,2,3,6,7,8,9 "$F" | grep -v '^would_write' | tail -n +2 | cut -c1-200; } || true ;;
   canary)   test "$(hostname)" = antcat-prod; run -e MODE=write --env-file $T/$TAG.canary.env ;;
   rest)     test "$(hostname)" = antcat-prod; run -e MODE=write ;;
   logs)     tar czf ${TAG}_logs_$(hostname).tgz apply_grouped_changes_check_*.tsv apply_grouped_changes_write_*.tsv $(ls deleted_taxon_*.json type_name_*.json 2>/dev/null); md5sum ${TAG}_logs_$(hostname).tgz | cut -c1-32 ;;
