@@ -443,6 +443,10 @@ a multi year project"). The gates stay; the pasting goes.
   calls save, update, destroy, delete or create. First runner: `gender/wording_export.rb` (derivations that say
   "not identified" and near wordings; protonym notes that mention "Spelling"). In a grouped write input, the label
   of a protonym row is the protonym's own name (for a subgenus the bare name, e.g. Morleyidris), not the taxon's.
+- **Completeness export (27 Nov 2026):** `gender/completeness_export.rb`, one JSON line per genus-group and
+  species-group protonym: grammar and etymology fields, the original description (reference, pages, and whether AntCat
+  holds its PDF itself or through the nesting reference: `pdf` = pdf | link | empty), notes page, and each taxon with
+  its genus and the genus's gender. The source for sorting the completeness work into batches of about a thousand.
 - **Before the run:** Brian has approved the input; the board note is posted. **After:** server log entry, board
   release, project documents. Record the runner's commit and md5 in the server log (the script prints the md5).
 - **Batches:** about a thousand names, not dozens. All reading is done first: AntCat's own PDF (for a nested
