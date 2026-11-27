@@ -61,7 +61,7 @@ case $STEP in
     gzip -t $D; ls -l $D
     verify; run -e MODE=check
     F="$(ls -t apply_grouped_changes_check_*.tsv | head -1)"
-    cut -f1,2,3,6,7,8 "$F" | head -41 | cut -c1-170
+    cut -f1,2,3,6,7,8 "$F" | awk 'NR<=41' | cut -c1-170   # awk reads to the end: head would end the pipe early (SIGPIPE under pipefail stopped the run of 27 Nov)
     [ "$(wc -l < "$F")" -gt 41 ] && { echo "  ... $(($(wc -l < "$F") - 41)) more rows in $F; held rows:"; cut -f1,2,3,6,7,8,9 "$F" | grep -v '^would_write' | tail -n +2 | cut -c1-200; } || true ;;
   canary)   test "$(hostname)" = antcat-prod; run -e MODE=write --env-file $T/$TAG.canary.env ;;
   rest)     test "$(hostname)" = antcat-prod; run -e MODE=write ;;
@@ -74,7 +74,10 @@ esac
 REMOTE
 }
 
-echo "===== 1. STAGING (check, then write)";                         remote $ST staging
+# FROM=prod: staging was already checked and written by an earlier run of this TAG (its hold file stays set);
+# go straight to the production dump and dry run.
+if [ "${FROM:-}" = prod ]; then echo "===== 1. STAGING: written by an earlier run of $TAG; skipped (FROM=prod)"
+else echo "===== 1. STAGING (check, then write)";                     remote $ST staging; fi
 echo "===== 2. PRODUCTION: dump, then dry run (writes nothing)";     remote $PR prodcheck
 read -r -p "Write the canary ($CANARY) to production? Type yes: " A
 [ "$A" = yes ] || { echo "Stopped. Nothing written to production. Files and the staging hold stay for a rerun."; exit 0; }
